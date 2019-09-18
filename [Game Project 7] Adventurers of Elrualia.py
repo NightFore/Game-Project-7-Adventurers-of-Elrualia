@@ -509,6 +509,20 @@ class Text_Input():
         gameDisplay.blit(self.textinput.get_surface(), size)
 
 
+def load_tile_table(filename, width, height, colorkey=(0,0,0)):
+    image = pygame.image.load(filename).convert()
+    image.set_colorkey(colorkey)
+    image_width, image_height = image.get_size()
+    tile_table = []
+    for tile_x in range(int(image_width/width)):
+        line = []
+        tile_table.append(line)
+        for tile_y in range(int(image_height/height)):
+            rect = (tile_x*width, tile_y*height, width, height)
+            line.append(image.subsurface(rect))
+    return tile_table
+
+
 
 ############################################################
 """
@@ -539,7 +553,16 @@ color_title_screen  = 30,  30,  30
 
 background          = pygame.image.load("Data\Graphics\Background.png").convert()
 
-
+tile_woods      = load_tile_table("Data\Tilesets\Tile_woods.png", 40, 40)
+tile_desert     = load_tile_table("Data\Tilesets\Tile_desert.png", 40, 40)
+tile_grass      = load_tile_table("Data\Tilesets\Tile_grass.png", 40, 40)
+tile_mountain_1 = load_tile_table("Data\Tilesets\Tile_mountain_1.png", 40, 40)
+tile_mountain_2 = load_tile_table("Data\Tilesets\Tile_mountain_2.png", 40, 40)
+tile_mountain_3 = load_tile_table("Data\Tilesets\Tile_mountain_3.png", 40, 40)
+tile_ocean      = load_tile_table("Data\Tilesets\Tile_ocean.png", 40, 40)
+tile_road       = load_tile_table("Data\Tilesets\Tile_road.png", 40, 40)
+tile_soil       = load_tile_table("Data\Tilesets\Tile_soil.png", 40, 40)
+tile_list       = [tile_woods, tile_desert, tile_grass, tile_mountain_1, tile_mountain_2, tile_mountain_3, tile_ocean, tile_road, tile_soil]
 
 ############################################################
 """
@@ -627,11 +650,16 @@ class MainIG():
         elif init == False:
             self.grid_update()
 
+            for index, tileset in enumerate(tile_list):
+                for x, row in enumerate(tileset):
+                    for y, tile in enumerate(row):
+                        gameDisplay.blit(tile, ((x+index)*40, y*40))
 
     def grid_update(self):
-        for row in range(18):
-            for col in range(40):
-                pygame.draw.rect(gameDisplay, (0, 0, 0), (40*col, 40*row, 40, 40), 5)
+        size = 40
+        for col in range(int(display_width/size)):
+            for row in range(int(display_height/size)):
+                pygame.draw.rect(gameDisplay, (0, 0, 0), (size*col, size*row, size, size), 5)
 MainIG = MainIG()
 
 Main_Screen()
