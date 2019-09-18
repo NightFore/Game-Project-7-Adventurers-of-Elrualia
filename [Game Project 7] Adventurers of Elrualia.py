@@ -598,7 +598,7 @@ class MainIG():
         # Grid
         self.tile_list      = [tile_woods, tile_desert, tile_grass, tile_mountain_1, tile_mountain_2, tile_mountain_3, tile_ocean, tile_road, tile_soil]
         self.grid_size      = 40
-        self.grid_list      = [ [[0,0,0]]*int(display_height/self.grid_size) ] * int(display_width/self.grid_size)
+        self.grid_list      = [ [[2,0,0]]*int(display_height/self.grid_size) ] * int(display_width/self.grid_size)
 
     def update(self):
         if self.title == True:
@@ -652,18 +652,7 @@ class MainIG():
 
         elif init == False:
             self.grid_update()
-
-            index_x, index_y = 0, 0
-            for index, tileset in enumerate(self.tile_list):
-                for x, row in enumerate(tileset):
-                    for y, tile in enumerate(row):
-                        gameDisplay.blit(tile, ((x+index_x)*40, (y+index_y)*40))
-                index_x += x
-
-                if index%3 == 2:
-                    index   = 0
-                    index_x = 0
-                    index_y += y
+            self.debug_tile()
                     
 
     def grid_update(self):
@@ -671,6 +660,20 @@ class MainIG():
             for index_y, tile in enumerate(tile_index):
                 gameDisplay.blit(self.tile_list[tile[0]][tile[1]][tile[2]], (index_x*self.grid_size, index_y*self.grid_size))
                 pygame.draw.rect(gameDisplay, (0, 0, 0), (self.grid_size*index_x, self.grid_size*index_y, self.grid_size, self.grid_size), 2)
+
+
+    def debug_tile(self):
+        index_x, index_y = 0, 0
+        for index, tileset in enumerate(self.tile_list):
+            for x, row in enumerate(tileset):
+                for y, tile in enumerate(row):
+                    gameDisplay.blit(tile, ((x+index_x)*40, (y+index_y)*40))
+
+            if index_x + len(row) < display_width/self.grid_size:
+                index_x += x+1
+            else:
+                index_x = 0
+                index_y += y+1
         
 MainIG = MainIG()
 
