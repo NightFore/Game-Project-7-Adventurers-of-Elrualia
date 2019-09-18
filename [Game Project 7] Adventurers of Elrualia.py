@@ -598,7 +598,7 @@ class MainIG():
         # Grid
         self.tile_list      = [tile_woods, tile_desert, tile_grass, tile_mountain_1, tile_mountain_2, tile_mountain_3, tile_ocean, tile_road, tile_soil]
         self.grid_size      = 40
-        self.grid_list      = [ [[0,0,0]]*int(display_width/self.grid_size) ] * int(display_height/self.grid_size)
+        self.grid_list      = [ [[0,0,0]]*int(display_height/self.grid_size) ] * int(display_width/self.grid_size)
 
     def update(self):
         if self.title == True:
@@ -653,23 +653,24 @@ class MainIG():
         elif init == False:
             self.grid_update()
 
+            index_x, index_y = 0, 0
             for index, tileset in enumerate(self.tile_list):
                 for x, row in enumerate(tileset):
                     for y, tile in enumerate(row):
-                        gameDisplay.blit(tile, ((x+index)*40, y*40))
+                        gameDisplay.blit(tile, ((x+index_x)*40, (y+index_y)*40))
+                index_x += x
+
+                if index%3 == 2:
+                    index   = 0
+                    index_x = 0
+                    index_y += y
+                    
 
     def grid_update(self):
-        for col in range(int(display_width/self.grid_size)):
-            for row in range(int(display_height/self.grid_size)):
-                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.grid_size*col, self.grid_size*row, self.grid_size, self.grid_size), 5)
-
-        index_x, index_y = 0, 0
-        for tile_index in self.grid_list:
-            for tile in tile_index:
+        for index_x, tile_index in enumerate(self.grid_list):
+            for index_y, tile in enumerate(tile_index):
                 gameDisplay.blit(self.tile_list[tile[0]][tile[1]][tile[2]], (index_x*self.grid_size, index_y*self.grid_size))
-                index_x += 1
-            index_y += 1
-            index_x = 0
+                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.grid_size*index_x, self.grid_size*index_y, self.grid_size, self.grid_size), 2)
         
 MainIG = MainIG()
 
