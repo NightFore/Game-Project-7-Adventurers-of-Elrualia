@@ -167,7 +167,10 @@ class Setup():
 
     def update_1(self):
         if self.background != None:
-            gameDisplay.blit(self.background, (0,0))
+            if isinstance(self.background, tuple) == True:
+                gameDisplay.fill(self.background)
+            else:
+                gameDisplay.blit(self.background, (0,0))
         
         self.events = pygame.event.get()
 
@@ -565,6 +568,7 @@ class MainIG():
 
         # State
         self.title          = False
+        self.main           = False
 
         # List
         self.list_music     = load_file("Data\Music")
@@ -573,11 +577,14 @@ class MainIG():
     def update(self):
         if self.title == True:
             self.title_update()
-     
 
-    def update_init(self, music=None, title=False):
+        elif self.main == True:
+            self.main_update()
+
+    def update_init(self, music=None, title=False, main=False):
         Setup.update_init(self.background, music)
-        self.title = title
+        self.title  = title
+        self.main   = main
 
 
     def title_update(self, init=False):
@@ -587,7 +594,7 @@ class MainIG():
 
             # Main
             Text((project_title, text_title), (True, display_width/2, display_height/4), True, color_black, 3, setup=True)
-            Button(("Start", text_interface), (None, None), (True, 1*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), True, None)
+            Button(("Start", text_interface), (None, None), (True, 1*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), True, self.main_update)
             Button(("Music", text_interface), (None, None), (True, 2*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), None, None)
             Button(("Exit",  text_interface), (None, None), (True, 3*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), None, quit_game)
 
@@ -610,6 +617,21 @@ class MainIG():
                 if index < len(self.list_music):
                     Button(("Music %i" % (index+1), Text_Button), (None, None), (False, display_width/64 + display_width/5*col, display_height/6 + display_height/9*row, display_width/6, display_height/12, 4, True), (color_green, color_red), self.list_music[index], Setup.update_music)
                     index += 1
+
+
+    def main_update(self, init=False):
+        if init == True:
+            self.background = (255, 255, 255)
+            self.update_init(main=True)
+
+        elif init == False:
+            self.grid_update()
+
+
+    def grid_update(self):
+        for row in range(18):
+            for col in range(40):
+                pygame.draw.rect(gameDisplay, (0, 0, 0), (40*col, 40*row, 40, 40), 5)
 MainIG = MainIG()
 
 Main_Screen()
