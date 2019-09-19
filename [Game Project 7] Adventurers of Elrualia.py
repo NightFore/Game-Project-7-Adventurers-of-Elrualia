@@ -583,6 +583,13 @@ def Main_Screen():
                 quit_game()
 
 
+class Tile(pygame.sprite.Sprite):
+    def __init__(self, x, y, size, image):
+        pygame.sprite.Sprite.__init__(self)
+        self.rect = pygame.Rect(x*size, y*size, size, size)
+        self.image = image
+
+
 
 class MainIG():
     def __init__(self):
@@ -609,10 +616,15 @@ class MainIG():
         self.grid_list      = [ [[2,0,0]]*int(display_height/self.grid_size) ] * int(display_width/self.grid_size)
 
         # Map
+        self.map_terrain    = []
+        self.map_obstacle   = []
+        self.tile_obstacle  = pygame.sprite.Group()
+     
         self.current_map    = 0
         self.map = []
         for index in load_file("Data\Map"):
             self.map.append(pytmx.load_pygame(index, pixelalpha=True))
+
 
     def update(self):
         if self.main == True:
@@ -654,26 +666,35 @@ class MainIG():
         if init == True:
             self.background = (255, 255, 255)
             self.update_init(main=True)
-            Button(("Map", text_interface), (None, None), (False, 0, 670, 100, 50, 5, True), (color_green, color_red), None, self.map_update)
+            self.map_update()
+            Button(("Map", text_interface), (None, None), (False, 0, 670, 100, 50, 5, True), (color_green, color_red), None, self.map_debug)
 
 
         elif init == False:
-            tile_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
-            tile_obstacle   = self.map[self.current_map].get_layer_by_name("Obstacle")
 
-            for x, y, image in tile_terrain.tiles():
+            for x, y, image in self.map_terrain.tiles():
                 gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
                 
-            for x, y, image in tile_obstacle.tiles():
+            for x, y, image in self.map_obstacle.tiles():
                 gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
 
             self.movement()
 
     def map_update(self):
+        self.map_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
+        self.map_obstacle   = self.map[self.current_map].get_layer_by_name("Obstacle")
+        
+        for x, y, image in self.map_obstacle.tiles():
+            self.tile_obstacle.add(Tile(x, y, self.grid_size, image))
+        
+
+    def map_debug(self):
         self.current_map += 1
 
         if self.current_map == len(self.map):
             self.current_map = 0
+
+        self.map_update()
         
     def movement(self):
         pygame.draw.rect(gameDisplay, (0,0,0), (self.player_x, self.player_y, 40, 40))
@@ -698,5 +719,4 @@ class MainIG():
         self.player_y += self.velocity_y
 
 MainIG = MainIG()
-
 Main_Screen()
