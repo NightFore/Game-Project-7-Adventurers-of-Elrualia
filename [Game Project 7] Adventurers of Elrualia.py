@@ -584,6 +584,9 @@ def Main_Screen():
 
 
 class Tile(pygame.sprite.Sprite):
+    """
+    https://sciences-du-numerique.fr/tuto-pygame/pytmx.html
+    """
     def __init__(self, x, y, size, image):
         pygame.sprite.Sprite.__init__(self)
         self.rect = pygame.Rect(x*size, y*size, size, size)
@@ -591,6 +594,9 @@ class Tile(pygame.sprite.Sprite):
     
     
 class SpriteIG(pygame.sprite.Sprite):
+    """
+    http://programarcadegames.com/index.php?chapter=introduction_to_sprites&lang=en
+    """
     def __init__(self, color, width, height):
         super().__init__()
         self.image = pygame.Surface([width, height])
@@ -614,6 +620,8 @@ class MainIG():
         # Player
         self.list_sprite = pygame.sprite.Group()
         self.player = SpriteIG((0,0,0), 40, 40)
+        self.player.rect.x = 80
+        self.player.rect.y = 80
         self.velocity_x = 0
         self.velocity_y = 0
         self.list_sprite.add(self.player)
@@ -716,6 +724,9 @@ class MainIG():
         else:
             self.velocity_x = 0
         self.player.rect.x += self.velocity_x
+        
+        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle):
+            self.player.rect.x -= self.velocity_x
 
         # Velocity y
         if keys[pygame.K_UP]:
@@ -725,8 +736,9 @@ class MainIG():
         else:
             self.velocity_y = 0
         self.player.rect.y += self.velocity_y
-    
-
+        
+        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle):
+            self.player.rect.y -= self.velocity_y
 
 
 MainIG = MainIG()
