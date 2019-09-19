@@ -677,30 +677,26 @@ class MainIG():
         
     def movement(self):
         pygame.draw.rect(gameDisplay, (0,0,0), (self.player_x, self.player_y, 40, 40))
+        keys = pygame.key.get_pressed()
 
-        for event in Setup.events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    self.velocity_x -= 5
-                if event.key == pygame.K_RIGHT:
-                    self.velocity_x += 5
-                if event.key == pygame.K_UP:
-                    self.velocity_y -= 5
-                if event.key == pygame.K_DOWN:
-                    self.velocity_y += 5
-                
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
-                    self.velocity_x += 5
-                if event.key == pygame.K_RIGHT:
-                    self.velocity_x -= 5
-                if event.key == pygame.K_UP:
-                    self.velocity_y += 5
-                if event.key == pygame.K_DOWN:
-                    self.velocity_y -= 5
-                
+        # Velocity x
+        if keys[pygame.K_LEFT]:
+            self.velocity_x = -5
+        elif keys[pygame.K_RIGHT]:
+            self.velocity_x = +5
+        else:
+            self.velocity_x = 0
         self.player_x += self.velocity_x
+
+        # Velocity y
+        if keys[pygame.K_UP]:
+            self.velocity_y = -5
+        elif keys[pygame.K_DOWN]:
+            self.velocity_y = +5
+        else:
+            self.velocity_y = 0
         self.player_y += self.velocity_y
+
 MainIG = MainIG()
 
 Main_Screen()
