@@ -13,6 +13,63 @@ from operator import itemgetter
 """
     Main Functions
 """
+class Setup():
+    def __init__(self):
+        # Setup
+        self.events         = ""
+        self.background     = None
+        self.music          = None
+
+        # State
+        self.button         = False
+        self.list_button    = []
+        
+        self.text           = False
+        self.list_text      = []
+
+
+    def update_init(self, background=None, music=None, button=False, text=False):
+        self.background = background
+        self.update_music(music)
+
+        self.button         = button
+        self.list_button    = []
+        
+        self.text           = text
+        self.list_text      = []
+
+
+    def update_music(self, music):
+        if self.music != music and music != None:
+            self.music = music
+            pygame.mixer.music.load(music)
+            pygame.mixer.music.play(-1)
+            
+
+    def update_1(self):
+        if self.background != None:
+            if isinstance(self.background, tuple) == True:
+                gameDisplay.fill(self.background)
+            else:
+                gameDisplay.blit(self.background, (0,0))
+        
+        self.events = pygame.event.get()
+
+
+    def update_2(self):
+        # Button
+        if self.button == True:
+            for index in self.list_button:
+                index.update()
+
+        # Text
+        if self.text == True:
+            for index in self.list_text:
+                index.update()
+Setup = Setup()
+
+
+
 class ScaledGame(pygame.Surface):
     os.environ['SDL_VIDEO_CENTERED'] = '1'  # Center window position
     game_size       = None
@@ -130,63 +187,6 @@ class ScaledGame(pygame.Surface):
         
         pygame.display.flip()
         self.clock.tick(60)
-
-
-
-class Setup():
-    def __init__(self):
-        # Setup
-        self.events         = ""
-        self.background     = None
-        self.music          = None
-
-        # State
-        self.button         = False
-        self.list_button    = []
-        
-        self.text           = False
-        self.list_text      = []
-
-
-    def update_init(self, background=None, music=None, button=False, text=False):
-        self.background = background
-        self.update_music(music)
-
-        self.button         = button
-        self.list_button    = []
-        
-        self.text           = text
-        self.list_text      = []
-
-
-    def update_music(self, music):
-        if self.music != music and music != None:
-            self.music = music
-            pygame.mixer.music.load(music)
-            pygame.mixer.music.play(-1)
-            
-
-    def update_1(self):
-        if self.background != None:
-            if isinstance(self.background, tuple) == True:
-                gameDisplay.fill(self.background)
-            else:
-                gameDisplay.blit(self.background, (0,0))
-        
-        self.events = pygame.event.get()
-
-
-    def update_2(self):
-        # Button
-        if self.button == True:
-            for index in self.list_button:
-                index.update()
-
-        # Text
-        if self.text == True:
-            for index in self.list_text:
-                index.update()
-Setup = Setup()
 
 
 
@@ -596,6 +596,13 @@ class MainIG():
         # List
         self.list_music     = load_file("Data\Music")
 
+        # Player
+        self.player_sprite  = ""
+        self.player_x       = display_width%2
+        self.player_y       = display_height%2
+        self.velocity_x = 0
+        self.velocity_y = 0
+
         # Grid
         self.tile_list      = [tile_woods, tile_desert, tile_grass, tile_mountain_1, tile_mountain_2, tile_mountain_3, tile_ocean, tile_road, tile_soil]
         self.grid_size      = 40
@@ -649,7 +656,6 @@ class MainIG():
             self.update_init(main=True)
             Button(("Map", text_interface), (None, None), (False, 0, 670, 100, 50, 5, True), (color_green, color_red), None, self.map_update)
 
-            Button(("Debug", text_interface), (None, None), (False, 1180, 670, 100, 50, 5, True), (color_green, color_red), None, self.debug_update)
 
         elif init == False:
             tile_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
@@ -660,7 +666,8 @@ class MainIG():
                 
             for x, y, image in tile_obstacle.tiles():
                 gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
-        
+
+            self.movement()
 
     def map_update(self):
         self.current_map += 1
@@ -668,6 +675,32 @@ class MainIG():
         if self.current_map == len(self.map):
             self.current_map = 0
         
+    def movement(self):
+        pygame.draw.rect(gameDisplay, (0,0,0), (self.player_x, self.player_y, 40, 40))
+
+        for event in Setup.events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    self.velocity_x -= 5
+                if event.key == pygame.K_RIGHT:
+                    self.velocity_x += 5
+                if event.key == pygame.K_UP:
+                    self.velocity_y -= 5
+                if event.key == pygame.K_DOWN:
+                    self.velocity_y += 5
+                
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    self.velocity_x += 5
+                if event.key == pygame.K_RIGHT:
+                    self.velocity_x -= 5
+                if event.key == pygame.K_UP:
+                    self.velocity_y += 5
+                if event.key == pygame.K_DOWN:
+                    self.velocity_y -= 5
+                
+        self.player_x += self.velocity_x
+        self.player_y += self.velocity_y
 MainIG = MainIG()
 
 Main_Screen()
