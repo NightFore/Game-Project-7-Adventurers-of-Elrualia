@@ -638,7 +638,7 @@ class MainIG():
         self.map_obstacle   = []
         self.tile_obstacle  = pygame.sprite.Group()
      
-        self.current_map    = 1
+        self.current_map    = 0
         self.map = []
         for index in load_file("Data\Map"):
             self.map.append(pytmx.load_pygame(index, pixelalpha=True))
@@ -739,24 +739,26 @@ class MainIG():
             self.velocity_y = +self.cursor_speed
         
         # Movement
-        self.player.rect.x += self.velocity_x
-        self.player.rect.y += self.velocity_y
-
-        if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]) and self.player.rect.x%(self.cursor_speed) != 0:
-            self.player.rect.x += self.cursor_speed/2
-        elif self.player.rect.x % self.grid_size == 0:
+        if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]) and self.player.rect.x % self.grid_size == 0:
             self.velocity_x = 0
-            
-        if (keys[pygame.K_UP] or keys[pygame.K_DOWN]) and self.player.rect.y%(self.cursor_speed) != 0:
-            self.player.rect.y += self.cursor_speed/2
-        elif self.player.rect.y % self.grid_size == 0:
-            self.velocity_y = 0
+        elif self.player.rect.x%(self.cursor_speed) != 0:
+            self.player.rect.x += self.cursor_speed/2
+        else:
+            self.player.rect.x += self.velocity_x
 
-        # Collision
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
             self.player.rect.x -= self.velocity_x
+        
+        if not (keys[pygame.K_UP] or keys[pygame.K_DOWN]) and self.player.rect.y % self.grid_size == 0:
+            self.velocity_y = 0
+        elif self.player.rect.y%(self.cursor_speed) != 0:
+            self.player.rect.y += self.cursor_speed/2
+        else:
+            self.player.rect.y += self.velocity_y
+                    
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
             self.player.rect.y -= self.velocity_y
+
             
         # Cursor movement
         for event in Setup.events:
