@@ -588,7 +588,15 @@ class Tile(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self)
         self.rect = pygame.Rect(x*size, y*size, size, size)
         self.image = image
-
+    
+    
+class SpriteIG(pygame.sprite.Sprite):
+    def __init__(self, color, width, height):
+        super().__init__()
+        self.image = pygame.Surface([width, height])
+        self.image.fill(color)
+        self.rect = self.image.get_rect()
+        
 
 
 class MainIG():
@@ -604,11 +612,11 @@ class MainIG():
         self.list_music     = load_file("Data\Music")
 
         # Player
-        self.player_sprite  = ""
-        self.player_x       = display_width%2
-        self.player_y       = display_height%2
+        self.list_sprite = pygame.sprite.Group()
+        self.player = SpriteIG((0,0,0), 40, 40)
         self.velocity_x = 0
         self.velocity_y = 0
+        self.list_sprite.add(self.player)
 
         # Grid
         self.tile_list      = [tile_woods, tile_desert, tile_grass, tile_mountain_1, tile_mountain_2, tile_mountain_3, tile_ocean, tile_road, tile_soil]
@@ -679,6 +687,7 @@ class MainIG():
                 gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
 
             self.movement()
+            self.list_sprite.draw(gameDisplay)
 
     def map_update(self):
         self.map_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
@@ -697,9 +706,8 @@ class MainIG():
         self.map_update()
         
     def movement(self):
-        pygame.draw.rect(gameDisplay, (0,0,0), (self.player_x, self.player_y, 40, 40))
         keys = pygame.key.get_pressed()
-
+    
         # Velocity x
         if keys[pygame.K_LEFT]:
             self.velocity_x = -5
@@ -707,7 +715,7 @@ class MainIG():
             self.velocity_x = +5
         else:
             self.velocity_x = 0
-        self.player_x += self.velocity_x
+        self.player.rect.x += self.velocity_x
 
         # Velocity y
         if keys[pygame.K_UP]:
@@ -716,7 +724,10 @@ class MainIG():
             self.velocity_y = +5
         else:
             self.velocity_y = 0
-        self.player_y += self.velocity_y
+        self.player.rect.y += self.velocity_y
+    
+
+
 
 MainIG = MainIG()
 Main_Screen()
