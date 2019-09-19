@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.2" tiledversion="1.2.4" orientation="orthogonal" renderorder="left-up" width="32" height="18" tilewidth="40" tileheight="40" infinite="0" nextlayerid="7" nextobjectid="1">
- <tileset firstgid="1" source="../../../# Tiled/Tile_grass.tsx"/>
- <tileset firstgid="49" source="../../../# Tiled/Tile_map.tsx"/>
+ <tileset firstgid="1" source="../Tilesheet/Tile_grass.tsx"/>
+ <tileset firstgid="49" source="../Tilesheet/Tile_map.tsx"/>
  <layer id="5" name="Terrain" width="32" height="18">
   <data encoding="csv">
 6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,

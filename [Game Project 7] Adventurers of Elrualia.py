@@ -554,15 +554,15 @@ color_title_screen  = 30,  30,  30
 
 background          = pygame.image.load("Data\Graphics\Background.png").convert()
 
-tile_woods      = load_tile_table("Data\Tilesets\Tile_woods.png", 40, 40)
-tile_desert     = load_tile_table("Data\Tilesets\Tile_desert.png", 40, 40)
-tile_grass      = load_tile_table("Data\Tilesets\Tile_grass.png", 40, 40)
-tile_mountain_1 = load_tile_table("Data\Tilesets\Tile_mountain_1.png", 40, 40)
-tile_mountain_2 = load_tile_table("Data\Tilesets\Tile_mountain_2.png", 40, 40)
-tile_mountain_3 = load_tile_table("Data\Tilesets\Tile_mountain_3.png", 40, 40)
-tile_ocean      = load_tile_table("Data\Tilesets\Tile_ocean.png", 40, 40)
-tile_road       = load_tile_table("Data\Tilesets\Tile_road.png", 40, 40)
-tile_soil       = load_tile_table("Data\Tilesets\Tile_soil.png", 40, 40)
+tile_woods      = load_tile_table("Data\Tilesheet\Tile_woods.png", 40, 40)
+tile_desert     = load_tile_table("Data\Tilesheet\Tile_desert.png", 40, 40)
+tile_grass      = load_tile_table("Data\Tilesheet\Tile_grass.png", 40, 40)
+tile_mountain_1 = load_tile_table("Data\Tilesheet\Tile_mountain_1.png", 40, 40)
+tile_mountain_2 = load_tile_table("Data\Tilesheet\Tile_mountain_2.png", 40, 40)
+tile_mountain_3 = load_tile_table("Data\Tilesheet\Tile_mountain_3.png", 40, 40)
+tile_ocean      = load_tile_table("Data\Tilesheet\Tile_ocean.png", 40, 40)
+tile_road       = load_tile_table("Data\Tilesheet\Tile_road.png", 40, 40)
+tile_soil       = load_tile_table("Data\Tilesheet\Tile_soil.png", 40, 40)
 
 ############################################################
 """
@@ -606,9 +606,6 @@ class MainIG():
         self.map = []
         for index in load_file("Data\Map"):
             self.map.append(pytmx.load_pygame(index, pixelalpha=True))
-        
-        # Debug
-        self.debug = False
 
     def update(self):
         if self.main == True:
@@ -655,52 +652,21 @@ class MainIG():
             Button(("Debug", text_interface), (None, None), (False, 1180, 670, 100, 50, 5, True), (color_green, color_red), None, self.debug_update)
 
         elif init == False:
-            if self.debug == False:
-                tile_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
-                tile_obstacle   = self.map[self.current_map].get_layer_by_name("Obstacle")
+            tile_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
+            tile_obstacle   = self.map[self.current_map].get_layer_by_name("Obstacle")
 
-                for x, y, image in tile_terrain.tiles():
-                    gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
-                    
-                for x, y, image in tile_obstacle.tiles():
-                    gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
+            for x, y, image in tile_terrain.tiles():
+                gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
+                
+            for x, y, image in tile_obstacle.tiles():
+                gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
         
-            elif self.debug == True:
-                self.debug_tile()
-
-            print(self.debug)
 
     def map_update(self):
         self.current_map += 1
 
         if self.current_map == len(self.map):
             self.current_map = 0
-
-    def debug_update(self):
-        if self.debug == True:
-            self.debug = False
-
-        elif self.debug == False:
-            self.debug = True
-
-    
-    def debug_tile(self):
-        for index_x, tile_index in enumerate(self.grid_list):
-            for index_y, tile in enumerate(tile_index):
-                gameDisplay.blit(self.tile_list[tile[0]][tile[1]][tile[2]], (index_x*self.grid_size, index_y*self.grid_size))
-                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.grid_size*index_x, self.grid_size*index_y, self.grid_size, self.grid_size), 2)
-
-        index_x, index_y = 0, 0
-        for index, tileset in enumerate(self.tile_list):
-            for x, row in enumerate(tileset):
-                for y, tile in enumerate(row):
-                    gameDisplay.blit(tile, ((x+index_x)*40, (y+index_y)*40))
-
-            if index_x + len(row) < display_width/self.grid_size:
-                index_x += x+1
-            else:
-                index_x = 0
-                index_y += y+1
         
 MainIG = MainIG()
 
