@@ -702,6 +702,7 @@ class MainIG():
             self.list_sprite.draw(gameDisplay)
 
     def map_update(self):
+        self.tile_obstacle  = pygame.sprite.Group()
         self.map_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
         self.map_obstacle   = self.map[self.current_map].get_layer_by_name("Obstacle")
         
