@@ -715,12 +715,13 @@ class MainIG():
         
     def movement(self):
         keys = pygame.key.get_pressed()
+        speed = 20
     
-        # Velocity x
+        # Velocity_x
         if keys[pygame.K_LEFT]:
-            self.velocity_x = -5
+            self.velocity_x = -speed
         elif keys[pygame.K_RIGHT]:
-            self.velocity_x = +5
+            self.velocity_x = +speed
         else:
             self.velocity_x = 0
         self.player.rect.x += self.velocity_x
@@ -728,18 +729,37 @@ class MainIG():
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle):
             self.player.rect.x -= self.velocity_x
 
-        # Velocity y
+        # Velocity_y
         if keys[pygame.K_UP]:
-            self.velocity_y = -5
+            self.velocity_y = -speed
         elif keys[pygame.K_DOWN]:
-            self.velocity_y = +5
+            self.velocity_y = +speed
         else:
             self.velocity_y = 0
         self.player.rect.y += self.velocity_y
-        
+
+        # Collision
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle):
             self.player.rect.y -= self.velocity_y
 
+        # Grid movement
+        for event in Setup.events:
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT and self.player.rect.x % self.grid_size != 0:
+                    self.player.rect.x -= self.player.rect.x % self.grid_size
+                    print("1")
+                    
+                if event.key == pygame.K_RIGHT and self.player.rect.x % self.grid_size != 0:
+                    self.player.rect.x += 40 - self.player.rect.x % self.grid_size
+                    print(2)
+                    
+                if event.key == pygame.K_UP and self.player.rect.y % self.grid_size != 0:
+                    self.player.rect.y -= self.player.rect.y % self.grid_size
+                    print(3)
+                    
+                if event.key == pygame.K_DOWN and self.player.rect.y % self.grid_size != 0:
+                    self.player.rect.y += 40 - self.player.rect.y % self.grid_size
+                    print(4)
 
 MainIG = MainIG()
 Main_Screen()
