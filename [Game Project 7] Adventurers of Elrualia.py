@@ -624,6 +624,7 @@ class MainIG():
         self.player.rect.y = 80
         self.velocity_x = 0
         self.velocity_y = 0
+        self.cursor_speed = 5
         self.cursor_wait = 0
         self.list_sprite.add(self.player)
 
@@ -718,31 +719,38 @@ class MainIG():
         
     def movement(self):
         keys = pygame.key.get_pressed()
-        speed = 5
-    
-        if keys[pygame.K_LEFT]:
-            self.velocity_x = -speed
-        elif keys[pygame.K_RIGHT]:
-            self.velocity_x = +speed
-            
-        if keys[pygame.K_UP]:
-            self.velocity_y = -speed
-        elif keys[pygame.K_DOWN]:
-            self.velocity_y = +speed
+        if self.cursor_wait < 2*self.grid_size/self.cursor_speed:
+            self.cursor_speed = 5
         else:
-            self.velocity_y = 0
+            self.cursor_speed = 10
 
-        if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]) and self.player.rect.x % self.grid_size == 0:
-            self.velocity_x = 0
-        if not (keys[pygame.K_UP] or keys[pygame.K_DOWN]) and self.player.rect.y % self.grid_size == 0:
-            self.velocity_y = 0
-        
+
         if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT] or keys[pygame.K_UP] or keys[pygame.K_DOWN]:
             self.cursor_wait += 1
 
+
+        if keys[pygame.K_LEFT]:
+            self.velocity_x = -self.cursor_speed
+        elif keys[pygame.K_RIGHT]:
+            self.velocity_x = +self.cursor_speed            
+        if keys[pygame.K_UP]:
+            self.velocity_y = -self.cursor_speed
+        elif keys[pygame.K_DOWN]:
+            self.velocity_y = +self.cursor_speed
+        
         # Movement
         self.player.rect.x += self.velocity_x
         self.player.rect.y += self.velocity_y
+
+        if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]) and self.player.rect.x%(self.cursor_speed) != 0:
+            self.player.rect.x += self.cursor_speed/2
+        elif self.player.rect.x % self.grid_size == 0:
+            self.velocity_x = 0
+            
+        if (keys[pygame.K_UP] or keys[pygame.K_DOWN]) and self.player.rect.y%(self.cursor_speed) != 0:
+            self.player.rect.y += self.cursor_speed/2
+        elif self.player.rect.y % self.grid_size == 0:
+            self.velocity_y = 0
 
         # Collision
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
