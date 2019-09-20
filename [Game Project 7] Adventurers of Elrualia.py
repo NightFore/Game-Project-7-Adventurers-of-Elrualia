@@ -723,11 +723,13 @@ class MainIG():
         if self.cursor_wait < 2*self.grid_size/self.cursor_speed:
             self.cursor_speed = 5
         else:
-            self.cursor_speed = 10
+            self.cursor_speed = 12
 
 
         if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT] or keys[pygame.K_UP] or keys[pygame.K_DOWN]:
             self.cursor_wait += 1
+        else:
+            self.cursor_wait = 0
 
 
         if keys[pygame.K_LEFT]:
@@ -738,44 +740,30 @@ class MainIG():
             self.velocity_y = -self.cursor_speed
         elif keys[pygame.K_DOWN]:
             self.velocity_y = +self.cursor_speed
-        
-        # Movement
-        if not (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]) and self.player.rect.x % self.grid_size == 0:
-            self.velocity_x = 0
-        elif self.player.rect.x%(self.cursor_speed) != 0:
-            self.player.rect.x += self.cursor_speed/2
-        else:
+
+        if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):
             self.player.rect.x += self.velocity_x
 
-        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
-            self.player.rect.x -= self.velocity_x
-        
-        if not (keys[pygame.K_UP] or keys[pygame.K_DOWN]) and self.player.rect.y % self.grid_size == 0:
-            self.velocity_y = 0
-        elif self.player.rect.y%(self.cursor_speed) != 0:
-            self.player.rect.y += self.cursor_speed/2
-        else:
-            self.player.rect.y += self.velocity_y
-                    
-        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
-            self.player.rect.y -= self.velocity_y
+            if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
+                self.player.rect.x -= self.velocity_x
 
-            
-        # Cursor movement
-        for event in Setup.events:
-            if event.type == pygame.KEYUP:
-                self.cursor_wait = 0
-##                if event.key == pygame.K_LEFT and self.player.rect.x % self.grid_size != 0:
-##                    self.player.rect.x -= self.player.rect.x % self.grid_size
-##                    
-##                if event.key == pygame.K_RIGHT and self.player.rect.x % self.grid_size != 0:
-##                    self.player.rect.x += 40 - self.player.rect.x % self.grid_size
-##                    
-##                if event.key == pygame.K_UP and self.player.rect.y % self.grid_size != 0:
-##                    self.player.rect.y -= self.player.rect.y % self.grid_size
-##                    
-##                if event.key == pygame.K_DOWN and self.player.rect.y % self.grid_size != 0:
-##                    self.player.rect.y += 40 - self.player.rect.y % self.grid_size
+                if self.player.rect.x % self.grid_size != 0:
+                    if self.velocity_x > 0:
+                        self.player.rect.x += self.grid_size - self.player.rect.x % self.grid_size
+                    else:
+                        self.player.rect.x -= self.player.rect.x % self.grid_size
+
+        if (keys[pygame.K_UP] or keys[pygame.K_DOWN]):
+            self.player.rect.y += self.velocity_y
+
+            if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
+                self.player.rect.y -= self.velocity_y
+
+                if self.player.rect.y % self.grid_size != 0:
+                    if self.velocity_y > 0:
+                        self.player.rect.y += self.grid_size - self.player.rect.y % self.grid_size
+                    else:
+                        self.player.rect.y -= self.player.rect.y % self.grid_size
                 
 
 
