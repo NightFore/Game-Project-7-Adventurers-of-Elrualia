@@ -534,7 +534,7 @@ project_title = "Adventurers of Elrualia"
 
 
 # Screen Size
-Screen_size = display_width, display_height = 1280, 720
+Screen_size = display_width, display_height = 1280, 768
 gameDisplay = ScaledGame(project_title, Screen_size)
 
 
@@ -624,9 +624,9 @@ class MainIG():
 
         # Player
         self.list_sprite = pygame.sprite.Group()
-        self.player = SpriteIG((0,0,0), 40, 40)
-        self.player.rect.x = 11*self.grid_size
-        self.player.rect.y = 15*self.grid_size
+        self.player = SpriteIG((0,0,0), self.grid_size, self.grid_size)
+        self.player.rect.x = 11 * self.grid_size
+        self.player.rect.y = 19 * self.grid_size
         
         self.velocity_x = 0
         self.velocity_y = 0
@@ -679,7 +679,7 @@ class MainIG():
             self.background = (255, 255, 255)
             self.update_init(main=True)
             self.map_update()
-            Button(("Map", text_interface), (None, None), (False, 0, 670, 100, 50, 5, True), (color_green, color_red), None, self.map_debug)
+            Button(("Map", text_interface), (None, None), (False, 0, display_height-50, 100, 50, 5, True), (color_green, color_red), None, self.map_debug)
 
 
         elif init == False:
@@ -790,6 +790,11 @@ class MainIG():
                     self.player.rect.y += self.grid_size - self.player.rect.y % self.grid_size
                 else:
                     self.player.rect.y -= self.player.rect.y % self.grid_size
+
+        # Grid
+        for col in range(display_width//self.grid_size):
+            for row in range(display_height//self.grid_size):
+                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.grid_size*col, self.grid_size*row, self.grid_size, self.grid_size), 1)
                 
 
 
