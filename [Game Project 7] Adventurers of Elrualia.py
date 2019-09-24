@@ -554,16 +554,6 @@ color_title_screen  = 30,  30,  30
 
 background          = pygame.image.load("Data\Graphics\Background.png").convert()
 
-tile_woods      = load_tile_table("Data\Tilesheet\Tile_woods.png", 40, 40)
-tile_desert     = load_tile_table("Data\Tilesheet\Tile_desert.png", 40, 40)
-tile_grass      = load_tile_table("Data\Tilesheet\Tile_grass.png", 40, 40)
-tile_mountain_1 = load_tile_table("Data\Tilesheet\Tile_mountain_1.png", 40, 40)
-tile_mountain_2 = load_tile_table("Data\Tilesheet\Tile_mountain_2.png", 40, 40)
-tile_mountain_3 = load_tile_table("Data\Tilesheet\Tile_mountain_3.png", 40, 40)
-tile_ocean      = load_tile_table("Data\Tilesheet\Tile_ocean.png", 40, 40)
-tile_road       = load_tile_table("Data\Tilesheet\Tile_road.png", 40, 40)
-tile_soil       = load_tile_table("Data\Tilesheet\Tile_soil.png", 40, 40)
-
 ############################################################
 """
     Game Functions
@@ -617,21 +607,8 @@ class MainIG():
         # List
         self.list_music     = load_file("Data\Music")
 
-        # Player
-        self.list_sprite = pygame.sprite.Group()
-        self.player = SpriteIG((0,0,0), 40, 40)
-        self.player.rect.x = 80
-        self.player.rect.y = 80
-        self.velocity_x = 0
-        self.velocity_y = 0
-        self.cursor_speed = 5
-        self.cursor_slide = 8
-        self.cursor_wait = 0
-        self.list_sprite.add(self.player)
-
         # Grid
-        self.tile_list      = [tile_woods, tile_desert, tile_grass, tile_mountain_1, tile_mountain_2, tile_mountain_3, tile_ocean, tile_road, tile_soil]
-        self.grid_size      = 40
+        self.grid_size      = 32
         self.grid_list      = [ [[2,0,0]]*int(display_height/self.grid_size) ] * int(display_width/self.grid_size)
 
         # Map
@@ -642,7 +619,21 @@ class MainIG():
         self.current_map    = 0
         self.map = []
         for index in load_file("Data\Map"):
-            self.map.append(pytmx.load_pygame(index, pixelalpha=True))
+            if ".tmx" in index:
+                self.map.append(pytmx.load_pygame(index, pixelalpha=True))
+
+        # Player
+        self.list_sprite = pygame.sprite.Group()
+        self.player = SpriteIG((0,0,0), 40, 40)
+        self.player.rect.x = 11*self.grid_size
+        self.player.rect.y = 15*self.grid_size
+        
+        self.velocity_x = 0
+        self.velocity_y = 0
+        self.cursor_speed = 5
+        self.cursor_slide = 8
+        self.cursor_hold = 0
+        self.list_sprite.add(self.player)
 
 
 
@@ -721,18 +712,22 @@ class MainIG():
         
     def movement(self):
         keys = pygame.key.get_pressed()
-        if self.cursor_wait < 2*self.grid_size/self.cursor_speed:
-            self.cursor_speed = 5
+
+        # Cursor speed
+        if self.cursor_hold < 2*self.grid_size/self.cursor_speed:
+            self.cursor_speed = self.grid_size/8
         else:
-            self.cursor_speed = 10
+            self.cursor_speed = self.grid_size/4
 
 
+        # Cursor hold
         if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT] or keys[pygame.K_UP] or keys[pygame.K_DOWN]:
-            self.cursor_wait += 1
+            self.cursor_hold += 1
         else:
-            self.cursor_wait = 0
+            self.cursor_hold = 0
 
 
+        # Velocity
         if keys[pygame.K_LEFT]:
             self.velocity_x = -self.cursor_speed
         elif keys[pygame.K_RIGHT]:
@@ -742,7 +737,8 @@ class MainIG():
         elif keys[pygame.K_DOWN]:
             self.velocity_y = +self.cursor_speed
 
-        print(self.player.rect.x)
+
+        # X movement
         if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):
             self.player.rect.x += self.velocity_x
             
@@ -758,6 +754,7 @@ class MainIG():
                 else:
                     self.player.rect.x -= self.cursor_slide
 
+        # X collision
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
             self.player.rect.x -= self.velocity_x
 
@@ -768,6 +765,7 @@ class MainIG():
                     self.player.rect.x -= self.player.rect.x % self.grid_size
 
 
+        # Y movement
         if (keys[pygame.K_UP] or keys[pygame.K_DOWN]):
             self.player.rect.y += self.velocity_y
             
@@ -783,6 +781,7 @@ class MainIG():
                 else:
                     self.player.rect.y -= self.cursor_slide
 
+        # Y collision
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
             self.player.rect.y -= self.velocity_y
 
