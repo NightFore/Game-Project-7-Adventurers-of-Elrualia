@@ -616,7 +616,7 @@ class TiledMap():
                 return tile_layer
 
     def tile_object(self, name):
-        for tile_object in self.tmxdata.object:
+        for tile_object in self.tmxdata.objects:
             if tile_object.name == name:
                 return tile_object
 
@@ -737,6 +737,12 @@ class MainIG():
         self.tile_obstacle  = pygame.sprite.Group()
         for x, y, image in TiledMap.tile_layer("collision").tiles():
             self.tile_obstacle.add(Tile(x, y, self.tile_width, self.tile_height, image))
+
+
+        for tile_object in TiledMap.tmxdata.objects:
+            if tile_object.name == "player":
+                self.player.rect.x = tile_object.x
+                self.player.rect.y = tile_object.y
             
             
     def movement(self):

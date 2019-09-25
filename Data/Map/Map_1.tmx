@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.2" tiledversion="1.2.4" orientation="orthogonal" renderorder="left-up" width="40" height="24" tilewidth="32" tileheight="32" infinite="0" nextlayerid="24" nextobjectid="1">
+<map version="1.2" tiledversion="1.2.4" orientation="orthogonal" renderorder="left-up" width="40" height="24" tilewidth="32" tileheight="32" infinite="0" nextlayerid="25" nextobjectid="4">
  <tileset firstgid="1" source="../Tilesheet/[Base]BaseChip_pipo.tsx"/>
  <tileset firstgid="1065" name="[Base]BaseChip_pipo" tilewidth="32" tileheight="32" tilecount="1064" columns="8">
   <image source="../Tilesheet/[Base]BaseChip_pipo.png" width="256" height="4256"/>
@@ -117,4 +117,7 @@
 2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129,2129
 </data>
  </layer>
+ <objectgroup id="24" name="gameObjects">
+  <object id="1" name="player" x="352" y="576" width="32" height="32"/>
+ </objectgroup>
 </map>
