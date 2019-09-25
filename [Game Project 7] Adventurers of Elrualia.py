@@ -191,7 +191,7 @@ class ScaledGame(pygame.Surface):
 
 
 class Button():
-    def __init__(self, text, sound, pos, display, variable, action=None):
+    def __init__(self, text, pos, sound, display, variable, action=None):
         """
         Setup    : Add button to list_button
         Sound    : sound_action, sound_active
@@ -207,11 +207,6 @@ class Button():
         # Text
         self.text, self.font = text[0], text[1]
 
-        # Sound Effect
-        self.sound_action   = sound[0]
-        self.sound_active   = sound[1]
-        self.sound_state    = False
-
         # Position
         self.center     = pos[0]
         self.x          = pos[1]
@@ -221,6 +216,11 @@ class Button():
             self.h      = pos[4]
             self.b      = pos[5]
             self.border = pos[6]
+
+        # Sound Effect
+        self.sound_action   = sound[0]
+        self.sound_active   = sound[1]
+        self.sound_state    = False
 
         # Button
         if isinstance(display[0], tuple) == True or display[0] is None:
@@ -557,7 +557,7 @@ color_title_screen  = 30,  30,  30
     Game Functions
 """
 def Main_Screen():
-    MainIG.title_update()
+    MainIG.title_update(True)
 
     gameExit = False
     while not gameExit:
@@ -643,71 +643,80 @@ class MainIG():
 
         # State
         self.title          = False
+        self.gallery        = False
         self.main           = False
-
 
         # Tile
         self.tile_width     = TiledMap.tile_width
         self.tile_height    = TiledMap.tile_height
-    
         self.tile_obstacle  = pygame.sprite.Group()
-        for x, y, image in TiledMap.tile_layer("collision").tiles():
-            self.tile_obstacle.add(Tile(x, y, self.tile_width, self.tile_height, image))
 
-        # Player
-        self.list_sprite = pygame.sprite.Group()
-        self.player = SpriteIG((0,0,0), self.tile_width, self.tile_height)
-        self.player.rect.x = 11 * self.tile_width
-        self.player.rect.y = 19 * self.tile_height
-        
-        self.velocity_x = 0
-        self.velocity_y = 0
+        # Sprite
+        self.list_sprite    = pygame.sprite.Group()
+        self.player         = SpriteIG((0,0,0), self.tile_width, self.tile_height)
+        self.player.rect.x  = 11 * self.tile_width
+        self.player.rect.y  = 19 * self.tile_height
+        self.list_sprite.add(self.player)
 
         self.base_speed     = [6, 10]
         self.cursor_speed   = self.base_speed[0]
         self.cursor_slide   = self.base_speed[1]
         self.cursor_hold    = 0
-        self.list_sprite.add(self.player)
+        
+        self.velocity_x = 0
+        self.velocity_y = 0
+    
         
     def update(self):
-        if self.main == True:
+        if self.title == True:
+            self.title_update()
+            
+        elif self.main == True:
             self.main_update()
 
 
-    def update_init(self, music=None, main=False):
-        Setup.update_init(self.background, music)
-        self.main   = main
-
-
-    def title_update(self):
-        # Setup
-        self.update_init(None)
-
-        # Main
-        Text((project_title, text_title), (True, display_width/2, display_height/4), True, color_black, 3, setup=True)
-        Button(("Start", text_interface), (None, None), (True, 1*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), True, self.main_update)
-        Button(("Music", text_interface), (None, None), (True, 2*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), None, None)
-        Button(("Exit",  text_interface), (None, None), (True, 3*display_width/4, 3*display_height/4, 150, 50, 5, True), (color_green, color_red), None, quit_game)
+    def update_init(self, background=None, music=None, title=False, gallery=False, main=False):
+        Setup.update_init(background, music)
+        self.title      = title
+        self.gallery    = gallery
+        self.main       = main
         
 
-    def music_update(self):
-        # Setup
-        self.update_init(self.list_music[0])
 
-        # Main         
-        Text(("Music Gallery", text_title), (True, display_width/2, display_height/12), True, color_black, 3, setup=True)
-        Button(("Return", text_interface), (True, 740, 570, 100, 40, 1, True), (None, None), (color_button, color_red), True, self.title_update)
+    def title_update(self, init=False):
+        if init == False:
+            # Setup
+            self.update_init(title=True)
 
-        index = 0
-        for row in range(round(0.5+len(self.list_music)/5)):
-            for col in range(5):
-                if index < len(self.list_music):
-                    Button(("Music %i" % (index+1), Text_Button), (None, None), (False, display_width/64 + display_width/5*col, display_height/6 + display_height/9*row, display_width/6, display_height/12, 4, True), (color_green, color_red), self.list_music[index], Setup.update_music)
-                    index += 1
+            # Main
+            Text((project_title, text_title), (True, display_width/2, display_height/4), True, color_black, 3, setup=True)
+            Button(("Start", text_interface), (True, 1*display_width/4, 3*display_height/4, 150, 50, 5, True), (None, None), (color_green, color_red), True, self.main_update)
+            Button(("Music", text_interface), (True, 2*display_width/4, 3*display_height/4, 150, 50, 5, True), (None, None), (color_green, color_red), None, self.gallery_update)
+            Button(("Exit",  text_interface), (True, 3*display_width/4, 3*display_height/4, 150, 50, 5, True), (None, None), (color_green, color_red), None, quit_game)
+        
+
+    def gallery_update(self, init=False):
+        if init == False:
+            # Setup
+            self.update_init(gallery=True, music=self.list_music[0])
+
+            # Main         
+            Text(("Music Gallery", text_title), (True, display_width/2, display_height/12), True, color_black, 3, setup=True)
+            Button(("Return", text_interface), (True, 740, 570, 100, 40, 1, True), (None, None), (color_button, color_red), True, self.title_update)
+
+            index = 0
+            for row in range(round(0.5+len(self.list_music)/5)):
+                for col in range(5):
+                    if index < len(self.list_music):
+                        Button(("Music %i" % (index+1), Text_Button),
+                               (False, display_width/64 + display_width/5*col, display_height/6 + display_height/9*row, display_width/6, display_height/12, 4, True),
+                               (None, None), (color_green, color_red), self.list_music[index], Setup.update_music)
+                        index += 1
 
 
     def main_update(self, init=False):
         if init == True:
+            # Setup
             self.update_init(main=True)
 
         elif init == False:
