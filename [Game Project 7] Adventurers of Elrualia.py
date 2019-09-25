@@ -11,14 +11,6 @@ from operator import itemgetter
 
 ############################################################
 """
-    References:
-https://pytmx.readthedocs.io/en/latest/
-https://github.com/bitcraft/PyTMX
-https://sciences-du-numerique.fr/tuto-pygame/pytmx.html
-"""
-
-############################################################
-"""
     Main Functions
 """
 class Setup():
@@ -600,7 +592,46 @@ class SpriteIG(pygame.sprite.Sprite):
         self.image = pygame.Surface([width, height])
         self.image.fill(color)
         self.rect = self.image.get_rect()
-        
+
+
+class TiledMap():
+    def __init__(self):
+        self.current_map    = 0
+        self.list_map       = []
+        for Map in load_file("Data\Map"):
+            if "Map" and ".tmx" in Map:
+                self.list_map.append(pytmx.load_pygame(Map, pixelalpha=True))
+
+        self.tmxdata        = self.list_map[self.current_map]
+        self.tile_width     = self.tmxdata.tilewidth
+        self.tile_height    = self.tmxdata.tileheight
+        self.map_width      = self.tmxdata.width  * self.tile_width
+        self.map_height     = self.tmxdata.height * self.tile_height
+
+    def load_map(self, index):
+        self.current_map    = index
+        self.tmxdata        = self.list_map[self.current_map]
+        self.tile_width     = self.tmxdata.tilewidth
+        self.tile_height    = self.Tmxdata.tileheight
+        self.map_width      = self.tmxdata.width  * self.tile_width
+        self.map_height     = self.tmxdata.height * self.tile_height
+
+    def make_map(self):
+        temp_surface = pygame.Surface((self.map_width, self.map_height))
+        self.render(temp_surface)
+        return temp_surface
+    
+
+    def render(self, surface):
+        ti = self.tmxdata.get_tile_image_by_gid
+        for layer in self.tmxdata.visible_layers:
+            if isinstance(layer, pytmx.TiledTileLayer):
+                for x, y, gid in layer:
+                    tile = ti(gid)
+                    if tile:
+                        gameDisplay.blit(tile, (x * self.tile_width, y * self.tile_height))
+TiledMap = TiledMap()
+
 
 
 class MainIG():
@@ -614,27 +645,14 @@ class MainIG():
 
         # List
         self.list_music     = load_file("Data\Music")
-
-        # Grid
-        self.grid_size      = 32
-        self.grid_list      = [ [[2,0,0]]*int(display_height/self.grid_size) ] * int(display_width/self.grid_size)
-
-        # Map
-        self.map_terrain    = []
-        self.map_obstacle   = []
-        self.tile_obstacle  = pygame.sprite.Group()
-     
-        self.current_map    = 0
-        self.map = []
-        for index in load_file("Data\Map"):
-            if "Map" and ".tmx" in index:
-                self.map.append(pytmx.load_pygame(index, pixelalpha=True))
+        
+        self.tile_size = TiledMap.tile_width
 
         # Player
         self.list_sprite = pygame.sprite.Group()
-        self.player = SpriteIG((0,0,0), self.grid_size, self.grid_size)
-        self.player.rect.x = 11 * self.grid_size
-        self.player.rect.y = 19 * self.grid_size
+        self.player = SpriteIG((0,0,0), self.tile_size, self.tile_size)
+        self.player.rect.x = 11 * self.tile_size
+        self.player.rect.y = 19 * self.tile_size
         
         self.velocity_x = 0
         self.velocity_y = 0
@@ -649,6 +667,7 @@ class MainIG():
     def update(self):
         if self.main == True:
             self.main_update()
+
 
     def update_init(self, music=None, main=False):
         Setup.update_init(self.background, music)
@@ -686,28 +705,14 @@ class MainIG():
         if init == True:
             self.background = (255, 255, 255)
             self.update_init(main=True)
-            self.map_update()
             Button(("Map", text_interface), (None, None), (False, 0, display_height-50, 100, 50, 5, True), (color_green, color_red), None, self.map_debug)
 
 
         elif init == False:
-
-            for x, y, image in self.map_terrain.tiles():
-                gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
-                
-            for x, y, image in self.map_obstacle.tiles():
-                gameDisplay.blit(image, (x*self.grid_size, y*self.grid_size))
-
+            TiledMap.make_map()
             self.movement()
             self.list_sprite.draw(gameDisplay)
 
-    def map_update(self):
-        self.tile_obstacle  = pygame.sprite.Group()
-        self.map_terrain    = self.map[self.current_map].get_layer_by_name("Terrain")
-        self.map_obstacle   = self.map[self.current_map].get_layer_by_name("Obstacle")
-        
-        for x, y, image in self.map_obstacle.tiles():
-            self.tile_obstacle.add(Tile(x, y, self.grid_size, image))
         
 
     def map_debug(self):
@@ -722,10 +727,10 @@ class MainIG():
         keys = pygame.key.get_pressed()
 
         # Cursor speed
-        if self.cursor_hold < 2*self.grid_size/self.cursor_speed:
-            self.cursor_speed = self.grid_size/8
+        if self.cursor_hold < 2*self.tile_size/self.cursor_speed:
+            self.cursor_speed = self.tile_size/8
         else:
-            self.cursor_speed = self.grid_size/4
+            self.cursor_speed = self.tile_size/4
 
 
         # Cursor hold
@@ -750,59 +755,59 @@ class MainIG():
         if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):
             self.player.rect.x += self.velocity_x
             
-        elif self.player.rect.x % self.grid_size != 0:
+        elif self.player.rect.x % self.tile_size != 0:
             if self.velocity_x > 0:
-                if self.player.rect.x % self.grid_size > self.grid_size - self.cursor_slide:
-                    self.player.rect.x += self.grid_size - self.player.rect.x % self.grid_size
+                if self.player.rect.x % self.tile_size > self.tile_size - self.cursor_slide:
+                    self.player.rect.x += self.tile_size - self.player.rect.x % self.tile_size
                 else:
                     self.player.rect.x += self.cursor_slide
             else:
-                if self.player.rect.x % self.grid_size < self.cursor_slide:
-                    self.player.rect.x -= self.player.rect.x % self.grid_size
+                if self.player.rect.x % self.tile_size < self.cursor_slide:
+                    self.player.rect.x -= self.player.rect.x % self.tile_size
                 else:
                     self.player.rect.x -= self.cursor_slide
 
         # X collision
-        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
-            self.player.rect.x -= self.velocity_x
-
-            if self.player.rect.x % self.grid_size != 0:
-                if self.velocity_x > 0:
-                    self.player.rect.x += self.grid_size - self.player.rect.x % self.grid_size
-                else:
-                    self.player.rect.x -= self.player.rect.x % self.grid_size
+##        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
+##            self.player.rect.x -= self.velocity_x
+##
+##            if self.player.rect.x % self.tile_size != 0:
+##                if self.velocity_x > 0:
+##                    self.player.rect.x += self.tile_size - self.player.rect.x % self.tile_size
+##                else:
+##                    self.player.rect.x -= self.player.rect.x % self.tile_size
 
 
         # Y movement
         if (keys[pygame.K_UP] or keys[pygame.K_DOWN]):
             self.player.rect.y += self.velocity_y
             
-        elif self.player.rect.y % self.grid_size != 0:
+        elif self.player.rect.y % self.tile_size != 0:
             if self.velocity_y > 0:
-                if self.player.rect.y % self.grid_size > self.grid_size - self.cursor_slide:
-                    self.player.rect.y += self.grid_size - self.player.rect.y % self.grid_size
+                if self.player.rect.y % self.tile_size > self.tile_size - self.cursor_slide:
+                    self.player.rect.y += self.tile_size - self.player.rect.y % self.tile_size
                 else:
                     self.player.rect.y += self.cursor_slide
             else:
-                if self.player.rect.y % self.grid_size < self.cursor_slide:
-                    self.player.rect.y -= self.player.rect.y % self.grid_size
+                if self.player.rect.y % self.tile_size < self.cursor_slide:
+                    self.player.rect.y -= self.player.rect.y % self.tile_size
                 else:
                     self.player.rect.y -= self.cursor_slide
 
         # Y collision
-        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
-            self.player.rect.y -= self.velocity_y
-
-            if self.player.rect.y % self.grid_size != 0:
-                if self.velocity_y > 0:
-                    self.player.rect.y += self.grid_size - self.player.rect.y % self.grid_size
-                else:
-                    self.player.rect.y -= self.player.rect.y % self.grid_size
+##        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
+##            self.player.rect.y -= self.velocity_y
+##
+##            if self.player.rect.y % self.tile_size != 0:
+##                if self.velocity_y > 0:
+##                    self.player.rect.y += self.tile_size - self.player.rect.y % self.tile_size
+##                else:
+##                    self.player.rect.y -= self.player.rect.y % self.tile_size
 
         # Grid
-        for col in range(display_width//self.grid_size):
-            for row in range(display_height//self.grid_size):
-                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.grid_size*col, self.grid_size*row, self.grid_size, self.grid_size), 1)
+        for col in range(display_width//self.tile_size):
+            for row in range(display_height//self.tile_size):
+                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.tile_size*col, self.tile_size*row, self.tile_size, self.tile_size), 1)
                 
 
 
