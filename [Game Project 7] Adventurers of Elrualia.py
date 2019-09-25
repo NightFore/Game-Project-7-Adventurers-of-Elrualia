@@ -552,8 +552,6 @@ color_black         = 1,   0,   0
 color_button        = 140, 205, 245
 color_title_screen  = 30,  30,  30
 
-background          = pygame.image.load("Data\Graphics\Background.png").convert()
-
 ############################################################
 """
     Game Functions
@@ -640,18 +638,15 @@ TiledMap = TiledMap()
 class MainIG():
     def __init__(self):
         # Setup
-        self.background     = background
+        self.background     = pygame.image.load("Data\Graphics\Background.png").convert()
+        self.list_music     = load_file("Data\Music")
 
         # State
         self.title          = False
         self.main           = False
 
-        # List
-        self.list_music     = load_file("Data\Music")
 
         # Tile
-        self.tile_size      = TiledMap.tile_width
-
         self.tile_width     = TiledMap.tile_width
         self.tile_height    = TiledMap.tile_height
     
@@ -661,15 +656,17 @@ class MainIG():
 
         # Player
         self.list_sprite = pygame.sprite.Group()
-        self.player = SpriteIG((0,0,0), self.tile_size, self.tile_size)
-        self.player.rect.x = 11 * self.tile_size
-        self.player.rect.y = 19 * self.tile_size
+        self.player = SpriteIG((0,0,0), self.tile_width, self.tile_height)
+        self.player.rect.x = 11 * self.tile_width
+        self.player.rect.y = 19 * self.tile_height
         
         self.velocity_x = 0
         self.velocity_y = 0
-        self.cursor_speed = 5
-        self.cursor_slide = 8
-        self.cursor_hold = 0
+
+        self.base_speed     = [6, 10]
+        self.cursor_speed   = self.base_speed[0]
+        self.cursor_slide   = self.base_speed[1]
+        self.cursor_hold    = 0
         self.list_sprite.add(self.player)
         
     def update(self):
@@ -711,9 +708,7 @@ class MainIG():
 
     def main_update(self, init=False):
         if init == True:
-            self.background = (255, 255, 255)
             self.update_init(main=True)
-
 
         elif init == False:
             TiledMap.make_map()
@@ -724,19 +719,17 @@ class MainIG():
     def movement(self):
         keys = pygame.key.get_pressed()
 
-        # Cursor speed
-        if self.cursor_hold < 2*self.tile_size/self.cursor_speed:
-            self.cursor_speed = self.tile_size/8
+        # Speed
+        if self.cursor_hold < (self.tile_width+self.tile_height)/self.cursor_speed:
+            self.cursor_speed = self.base_speed[0]
         else:
-            self.cursor_speed = self.tile_size/4
+            self.cursor_speed = self.base_speed[1]
 
-
-        # Cursor hold
+        # Hold
         if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT] or keys[pygame.K_UP] or keys[pygame.K_DOWN]:
             self.cursor_hold += 1
         else:
             self.cursor_hold = 0
-
 
         # Velocity
         if keys[pygame.K_LEFT]:
@@ -753,43 +746,42 @@ class MainIG():
         if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):
             self.player.rect.x += self.velocity_x
             
-        elif self.player.rect.x % self.tile_size != 0:
+        elif self.player.rect.x % self.tile_width != 0:
             if self.velocity_x > 0:
-                if self.player.rect.x % self.tile_size > self.tile_size - self.cursor_slide:
-                    self.player.rect.x += self.tile_size - self.player.rect.x % self.tile_size
+                if self.player.rect.x % self.tile_width > self.tile_width - self.cursor_slide:
+                    self.player.rect.x += self.tile_width - self.player.rect.x % self.tile_width
                 else:
                     self.player.rect.x += self.cursor_slide
             else:
-                if self.player.rect.x % self.tile_size < self.cursor_slide:
-                    self.player.rect.x -= self.player.rect.x % self.tile_size
+                if self.player.rect.x % self.tile_width < self.cursor_slide:
+                    self.player.rect.x -= self.player.rect.x % self.tile_width
                 else:
                     self.player.rect.x -= self.cursor_slide
 
         # X collision
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
-            print(self.player, self.tile_obstacle)
             self.player.rect.x -= self.velocity_x
 
-            if self.player.rect.x % self.tile_size != 0:
+            if self.player.rect.x % self.tile_width != 0:
                 if self.velocity_x > 0:
-                    self.player.rect.x += self.tile_size - self.player.rect.x % self.tile_size
+                    self.player.rect.x += self.tile_width - self.player.rect.x % self.tile_width
                 else:
-                    self.player.rect.x -= self.player.rect.x % self.tile_size
+                    self.player.rect.x -= self.player.rect.x % self.tile_width
 
 
         # Y movement
         if (keys[pygame.K_UP] or keys[pygame.K_DOWN]):
             self.player.rect.y += self.velocity_y
             
-        elif self.player.rect.y % self.tile_size != 0:
+        elif self.player.rect.y % self.tile_height != 0:
             if self.velocity_y > 0:
-                if self.player.rect.y % self.tile_size > self.tile_size - self.cursor_slide:
-                    self.player.rect.y += self.tile_size - self.player.rect.y % self.tile_size
+                if self.player.rect.y % self.tile_height > self.tile_height - self.cursor_slide:
+                    self.player.rect.y += self.tile_height - self.player.rect.y % self.tile_height
                 else:
                     self.player.rect.y += self.cursor_slide
             else:
-                if self.player.rect.y % self.tile_size < self.cursor_slide:
-                    self.player.rect.y -= self.player.rect.y % self.tile_size
+                if self.player.rect.y % self.tile_height < self.cursor_slide:
+                    self.player.rect.y -= self.player.rect.y % self.tile_height
                 else:
                     self.player.rect.y -= self.cursor_slide
 
@@ -797,16 +789,16 @@ class MainIG():
         if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
             self.player.rect.y -= self.velocity_y
 
-            if self.player.rect.y % self.tile_size != 0:
+            if self.player.rect.y % self.tile_height != 0:
                 if self.velocity_y > 0:
-                    self.player.rect.y += self.tile_size - self.player.rect.y % self.tile_size
+                    self.player.rect.y += self.tile_height - self.player.rect.y % self.tile_height
                 else:
-                    self.player.rect.y -= self.player.rect.y % self.tile_size
+                    self.player.rect.y -= self.player.rect.y % self.tile_height
 
         # Grid
-        for col in range(display_width//self.tile_size):
-            for row in range(display_height//self.tile_size):
-                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.tile_size*col, self.tile_size*row, self.tile_size, self.tile_size), 1)
+        for col in range(display_width//self.tile_width):
+            for row in range(display_height//self.tile_height):
+                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.tile_width*col, self.tile_height*row, self.tile_width, self.tile_height), 1)
                 
 
 
