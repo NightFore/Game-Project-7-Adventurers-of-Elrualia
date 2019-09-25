@@ -11,6 +11,14 @@ from operator import itemgetter
 
 ############################################################
 """
+    References:
+https://pytmx.readthedocs.io/en/latest/
+https://github.com/bitcraft/PyTMX
+https://sciences-du-numerique.fr/tuto-pygame/pytmx.html
+"""
+
+############################################################
+"""
     Main Functions
 """
 class Setup():
@@ -619,7 +627,7 @@ class MainIG():
         self.current_map    = 0
         self.map = []
         for index in load_file("Data\Map"):
-            if ".tmx" in index:
+            if "Map" and ".tmx" in index:
                 self.map.append(pytmx.load_pygame(index, pixelalpha=True))
 
         # Player
