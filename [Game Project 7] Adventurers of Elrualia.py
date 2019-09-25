@@ -743,7 +743,11 @@ class MainIG():
             if tile_object.name == "player":
                 self.player.rect.x = tile_object.x
                 self.player.rect.y = tile_object.y
-            
+
+    def event_update(self, index):
+        for tile_object in TiledMap.tmxdata.objects:
+            if tile_object.name == "Transition":
+                pass
             
     def movement(self):
         keys = pygame.key.get_pressed()

@@ -20,7 +20,7 @@
 1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,0,0,0,0
 </data>
  </layer>
- <layer id="11" name="input_ground" width="20" height="15" locked="1">
+ <layer id="11" name="input_middleground" width="20" height="15" locked="1">
   <data encoding="csv">
 33,34,34,34,0,33,34,33,33,0,33,34,34,33,0,34,33,0,33,34,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,34,33,0,33,34,
@@ -39,7 +39,7 @@
 9,34,33,0,34,33,10,0,0,18,17,0,18,17,0,0,0,0,0,0
 </data>
  </layer>
- <layer id="12" name="output_ground" width="20" height="15" locked="1">
+ <layer id="12" name="output_middleground" width="20" height="15" locked="1">
   <data encoding="csv">
 33,34,33,34,0,33,34,33,34,0,33,34,33,34,0,33,34,0,33,34,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,34,33,0,34,33,
