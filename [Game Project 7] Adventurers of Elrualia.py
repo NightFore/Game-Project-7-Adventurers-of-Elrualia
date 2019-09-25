@@ -600,11 +600,13 @@ class TiledMap():
         self.map_width      = self.tmxdata.width  * self.tile_width
         self.map_height     = self.tmxdata.height * self.tile_height
 
-    def load_map(self, index):
-        self.current_map    = index
+    def load_map(self, index=None):
+        if index != None:
+            self.current_map    = index
+
         self.tmxdata        = self.list_map[self.current_map]
         self.tile_width     = self.tmxdata.tilewidth
-        self.tile_height    = self.Tmxdata.tileheight
+        self.tile_height    = self.tmxdata.tileheight
         self.map_width      = self.tmxdata.width  * self.tile_width
         self.map_height     = self.tmxdata.height * self.tile_height
 
@@ -623,7 +625,10 @@ class TiledMap():
         self.render(temp_surface)
         return temp_surface
 
-    def render(self, surface):
+    def render(self, surface=None):
+        if surface == None:
+            surface = self.make_map()
+        
         ti = self.tmxdata.get_tile_image_by_gid
         for layer in self.tmxdata.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
@@ -675,8 +680,8 @@ class MainIG():
             self.main_update()
 
 
-    def update_init(self, background=None, music=None, title=False, gallery=False, main=False):
-        Setup.update_init(background, music)
+    def update_init(self, music=None, title=False, gallery=False, main=False):
+        Setup.update_init(self.background, music)
         self.title      = title
         self.gallery    = gallery
         self.main       = main
@@ -684,7 +689,7 @@ class MainIG():
 
 
     def title_update(self, init=False):
-        if init == False:
+        if init == True:
             # Setup
             self.update_init(title=True)
 
@@ -696,7 +701,7 @@ class MainIG():
         
 
     def gallery_update(self, init=False):
-        if init == False:
+        if init == True:
             # Setup
             self.update_init(gallery=True, music=self.list_music[0])
 
@@ -718,11 +723,20 @@ class MainIG():
         if init == True:
             # Setup
             self.update_init(main=True)
+            self.map_update(0)
 
         elif init == False:
-            TiledMap.make_map()
+            TiledMap.render()
             self.movement()
             self.list_sprite.draw(gameDisplay)
+
+
+    def map_update(self, index):
+        TiledMap.load_map(index)
+    
+        self.tile_obstacle  = pygame.sprite.Group()
+        for x, y, image in TiledMap.tile_layer("collision").tiles():
+            self.tile_obstacle.add(Tile(x, y, self.tile_width, self.tile_height, image))
             
             
     def movement(self):
