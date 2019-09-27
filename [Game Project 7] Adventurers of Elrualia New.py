@@ -17,16 +17,21 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 """
     Colors
 """
-RED     = 255, 20,  0
-GREEN   = 60,  210, 120
-BLUE    = 0,   160, 230
-GREY    = 150, 170, 210
-WHITE   = 255, 255, 255
-BLACK   = 0,   0,   0
+RED         = 255, 0,   0
 
-LIGHTGREY   = 140, 205, 245
+GREEN       = 0,   255, 0
+DARKGREEN   = 60,  210, 120
 
-BGCOLOR = 200, 200, 200
+BLUE        = 0,   0,   255
+LIGHTBLUE   = 140, 205, 245
+
+GREY        = 150, 170, 210
+LIGHTGREY   = 100, 100, 100
+
+BLACK       = 0,   0,   0
+WHITE       = 255, 255, 255
+
+BGCOLOR     = 200, 200, 200
 
 
 
@@ -38,6 +43,7 @@ class Game:
         pygame.init()
         self.gameDisplay = ScaledGame(project_title, screen_size, 60)
         self.clock = pygame.time.Clock()
+        pygame.key.set_repeat(300, 75)
         self.load_data()
         self.new()
 
@@ -47,6 +53,10 @@ class Game:
     def new(self):
         # Initialize all variables
         self.all_sprites = pygame.sprite.Group()
+        self.player = Player(self, 0, 0)
+        self.walls = pygame.sprite.Group()
+        for x in range(10, 20):
+            Wall(self, x, 5)
 
     def run(self):
         self.gameExit = False
@@ -66,6 +76,17 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit_game()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.quit()
+                if event.key == pygame.K_LEFT:
+                    self.player.move(dx=-1)
+                if event.key == pygame.K_RIGHT:
+                    self.player.move(dx=1)
+                if event.key == pygame.K_UP:
+                    self.player.move(dy=-1)
+                if event.key == pygame.K_DOWN:
+                    self.player.move(dy=1)
 
 
     def update(self):
@@ -82,15 +103,9 @@ class Game:
 
     def draw_grid(self):
         for x in range(0, WIDTH, TILESIZE):
-            pygame.draw.line(self.gameDisplay, LIGHTGREY, (0, 0), (x, HEIGHT))
+            pygame.draw.line(self.gameDisplay, LIGHTGREY, (x, 0), (x, HEIGHT))
         for y in range(0, HEIGHT, TILESIZE):
-            pygame.draw.line(self.gameDisplay, LIGHTGREY, (0, 0), (WIDTH, y))
-
-    def show_start_screen(self):
-        pass
-
-    def show_go_screen(self):
-        pass
+            pygame.draw.line(self.gameDisplay, LIGHTGREY, (0, y), (WIDTH, y))
 
 
 
@@ -213,9 +228,40 @@ class ScaledGame(pygame.Surface):
 
 
 
+class Player(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self.groups = game.all_sprites
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = pygame.Surface((TILESIZE, TILESIZE))
+        self.image.fill(RED)
+        self.rect = self.image.get_rect()
+        self.x = x
+        self.y = y
+
+    def move(self, dx=0, dy=0):
+        self.x += dx
+        self.y += dy
+
+    def update(self):
+        self.rect.x = self.x * TILESIZE
+        self.rect.y = self.y * TILESIZE
+
+
+class Wall(pygame.sprite.Sprite):
+    def __init__(self, game, x ,y):
+        self.groups = game.all_sprites, game.walls
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.image = pygame.Surface((TILESIZE, TILESIZE))
+        self.image.fill(GREEN)
+        self.rect = self.image.get_rect()
+        self.x = x
+        self.y = y
+        self.rect.x = self.x * TILESIZE
+        self.rect.y = self.y * TILESIZE
+
+
+
 g = Game()
-g.show_start_screen()
-while True:
-    g.new()
-    g.run()
-    g.show_go_screen()
+g.run()
