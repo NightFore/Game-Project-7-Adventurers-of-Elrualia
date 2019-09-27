@@ -13,6 +13,7 @@ TILESIZE    = 32
 GRIDWIDTH   = WIDTH  / TILESIZE
 GRIDHEIGHT  = HEIGHT / TILESIZE
 
+PLAYER_SPEED = 300
 
 """
     Colors
@@ -53,7 +54,7 @@ class Game:
     def new(self):
         # Initialize all variables
         self.all_sprites = pygame.sprite.Group()
-        self.player = Player(self, 0, 0)
+        self.player = Player(self, 10, 10)
         self.walls = pygame.sprite.Group()
         for x in range(10, 20):
             Wall(self, x, 5)
@@ -61,7 +62,7 @@ class Game:
     def run(self):
         self.gameExit = False
         while not self.gameExit:
-            self.dt = self.clock.tick(FPS)
+            self.dt = self.clock.tick(FPS) / 1000
             self.events()
             self.update()
             self.draw()
@@ -76,17 +77,6 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit_game()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.quit()
-                if event.key == pygame.K_LEFT:
-                    self.player.move(dx=-1)
-                if event.key == pygame.K_RIGHT:
-                    self.player.move(dx=1)
-                if event.key == pygame.K_UP:
-                    self.player.move(dy=-1)
-                if event.key == pygame.K_DOWN:
-                    self.player.move(dy=1)
 
 
     def update(self):
@@ -236,17 +226,56 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.Surface((TILESIZE, TILESIZE))
         self.image.fill(RED)
         self.rect = self.image.get_rect()
-        self.x = x
-        self.y = y
+        self.vx = 0
+        self.vy = 0
+        self.x = x * TILESIZE
+        self.y = y * TILESIZE
 
-    def move(self, dx=0, dy=0):
-        self.x += dx
-        self.y += dy
+    def get_keys(self):
+        self.vx, self.vy = 0, 0
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.vx = -PLAYER_SPEED
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.vx = +PLAYER_SPEED
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.vy = -PLAYER_SPEED
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.vy = +PLAYER_SPEED
+
+        if self.vx != 0 and self.vy != 0:
+            self.vx *= 0.7071
+            self.vy *= 0.7071
+
+    def collide_with_walls(self, dir):
+        if dir == "x":
+            hits = pygame.sprite.spritecollide(self, self.game.walls, False)
+            if hits:
+                if self.vx > 0:
+                    self.x = hits[0].rect.left - self.rect.width
+                if self.vx < 0:
+                    self.x = hits[0].rect.right
+                self.vx = 0
+                self.rect.x = self.x
+            
+        if dir == "y":
+            hits = pygame.sprite.spritecollide(self, self.game.walls, False)
+            if hits:
+                if self.vy > 0:
+                    self.y = hits[0].rect.top - self.rect.height
+                if self.vy < 0:
+                    self.y = hits[0].rect.bottom
+                self.vy = 0
+                self.rect.y = self.y
 
     def update(self):
-        self.rect.x = self.x * TILESIZE
-        self.rect.y = self.y * TILESIZE
-
+        self.get_keys()
+        self.x += self.vx * self.game.dt
+        self.y += self.vy * self.game.dt
+        self.rect.x = self.x
+        self.collide_with_walls("x")
+        self.rect.y = self.y
+        self.collide_with_walls("y")
 
 class Wall(pygame.sprite.Sprite):
     def __init__(self, game, x ,y):
