@@ -6,8 +6,12 @@ from pygame.locals import *
     Settings
 """
 project_title = "Adventurers of Elrualia"
-screen_size = display_width, display_height = 1280, 768
+screen_size = WIDTH, HEIGHT = 1280, 768
+FPS = 60
 
+TILESIZE    = 32
+GRIDWIDTH   = WIDTH  / TILESIZE
+GRIDHEIGHT  = HEIGHT / TILESIZE
 
 
 """
@@ -18,7 +22,11 @@ GREEN   = 60,  210, 120
 BLUE    = 0,   160, 230
 GREY    = 150, 170, 210
 WHITE   = 255, 255, 255
-BLACK   = 1,   0,   0
+BLACK   = 0,   0,   0
+
+LIGHTGREY   = 140, 205, 245
+
+BGCOLOR = 200, 200, 200
 
 
 
@@ -28,13 +36,62 @@ BLACK   = 1,   0,   0
 class Game:
     def __init__(self):
         pygame.init()
-        self.gameDisplay = ScaledGame(project_title, screen_size)
+        self.gameDisplay = ScaledGame(project_title, screen_size, 60)
         self.clock = pygame.time.Clock()
         self.load_data()
+        self.new()
 
     def load_data(self):
         pass
-        
+
+    def new(self):
+        # Initialize all variables
+        self.all_sprites = pygame.sprite.Group()
+
+    def run(self):
+        self.gameExit = False
+        while not self.gameExit:
+            self.dt = self.clock.tick(FPS)
+            self.events()
+            self.update()
+            self.draw()
+            
+
+    def quit_game(self):
+        pygame.quit()
+        quit()
+
+
+    def events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.quit_game()
+
+
+    def update(self):
+        self.gameDisplay.update()
+        self.all_sprites.update()
+
+
+    def draw(self):
+        self.gameDisplay.fill(BGCOLOR)
+        self.draw_grid()
+        self.all_sprites.draw(self.gameDisplay)
+        pygame.display.flip()
+
+
+    def draw_grid(self):
+        for x in range(0, WIDTH, TILESIZE):
+            pygame.draw.line(self.gameDisplay, LIGHTGREY, (0, 0), (x, HEIGHT))
+        for y in range(0, HEIGHT, TILESIZE):
+            pygame.draw.line(self.gameDisplay, LIGHTGREY, (0, 0), (WIDTH, y))
+
+    def show_start_screen(self):
+        pass
+
+    def show_go_screen(self):
+        pass
+
 
 
 class ScaledGame(pygame.Surface):
@@ -53,7 +110,7 @@ class ScaledGame(pygame.Surface):
     factor_w        = 1
     factor_h        = 1
 
-    def __init__(self, title, game_size, first_screen=False):
+    def __init__(self, title, game_size, FPS, first_screen=False):
         # Title
         self.title = title
         pygame.display.set_caption(self.title)
@@ -74,6 +131,7 @@ class ScaledGame(pygame.Surface):
         pygame.Surface.__init__(self, self.game_size)
 
         # Game Settings
+        self.FPS = FPS
         self.clock = pygame.time.Clock()
 
     
@@ -111,7 +169,7 @@ class ScaledGame(pygame.Surface):
 
         #Updates screen properly
         win_size_done = False # Changes to True if the window size is got by the VIDEORESIZE event below
-        for event in Setup.events:
+        for event in pygame.event.get():
             if event.type == VIDEORESIZE:
                 ss = [event.w, event.h]
                 self.resize = True
@@ -151,8 +209,13 @@ class ScaledGame(pygame.Surface):
         self.screen.blit(pygame.transform.scale(self, self.game_scaled), self.game_gap)
         
         pygame.display.flip()
-        self.clock.tick(60)
+        self.clock.tick(self.FPS)
 
 
 
-Game()
+g = Game()
+g.show_start_screen()
+while True:
+    g.new()
+    g.run()
+    g.show_go_screen()
