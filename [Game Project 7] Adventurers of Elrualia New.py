@@ -1,5 +1,6 @@
 import pygame
 import os
+import pytmx
 
 from pygame.locals import *
 """
@@ -49,7 +50,7 @@ class Game:
         self.new()
 
     def load_data(self):
-        pass
+        self.map = Map("Data\Map\Map_1.tmx")
 
     def new(self):
         # Initialize all variables
@@ -58,6 +59,7 @@ class Game:
         self.walls = pygame.sprite.Group()
         for x in range(10, 20):
             Wall(self, x, 5)
+        self.camera = Camera(self.map.width, self.map.height)
 
     def run(self):
         self.gameExit = False
@@ -82,12 +84,14 @@ class Game:
     def update(self):
         self.gameDisplay.update()
         self.all_sprites.update()
+        self.camera.update(self.player)
 
 
     def draw(self):
         self.gameDisplay.fill(BGCOLOR)
         self.draw_grid()
-        self.all_sprites.draw(self.gameDisplay)
+        for sprite in self.all_sprites:
+            self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
         pygame.display.flip()
 
 
@@ -216,6 +220,39 @@ class ScaledGame(pygame.Surface):
         pygame.display.flip()
         self.clock.tick(self.FPS)
 
+
+
+class Map():
+    def __init__(self, filename):
+        self.tmxdata    = pytmx.load_pygame(filename, pixelalpha=True)
+        self.tilewidth  = self.tmxdata.tilewidth
+        self.tileheight = self.tmxdata.tileheight
+        self.width      = self.tilewidth  * TILESIZE
+        self.height     = self.tileheight * TILESIZE
+
+
+
+class Camera():
+    def __init__(self, width, height):
+        self.camera = pygame.Rect(0, 0, width, height)
+        self.width  = width
+        self.height = height
+        print(height)
+
+    def apply(self, entity):
+        return entity.rect.move(self.camera.topleft)
+
+    def update(self, target):
+        x = -target.rect.x + int(WIDTH  / 2)
+        y = -target.rect.y + int(HEIGHT / 2)
+
+        # Limit to map size
+        x = min(0, x)                           # Left
+        x = max(-(self.width-WIDTH), x)         # Right
+        y = min(0, y)                           # Top
+        y = max(-(self.height - HEIGHT), y)     # Bottom
+        self.camera = pygame.Rect(x, y, self.width, self.height)
+    
 
 
 class Player(pygame.sprite.Sprite):
