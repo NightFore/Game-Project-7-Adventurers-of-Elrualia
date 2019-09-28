@@ -6,6 +6,7 @@ vec = pygame.math.Vector2
 """
     Settings
 """
+# Game Settings
 project_title = "Adventurers of Elrualia"
 screen_size = WIDTH, HEIGHT = 1280, 768
 FPS = 60
@@ -14,7 +15,11 @@ TILESIZE    = 32
 GRIDWIDTH   = WIDTH  / TILESIZE
 GRIDHEIGHT  = HEIGHT / TILESIZE
 
+
+# Player Settings
 PLAYER_SPEED = 300
+PLAYER_IMG = "Data\Graphics\Player.png"
+
 
 """
     Colors
@@ -38,6 +43,24 @@ BGCOLOR     = 200, 200, 200
 
 
 """
+    Helpful Functions
+"""
+def load_tile_table(filename, width, height, colorkey=(0,0,0)):
+    image = pygame.image.load(filename).convert()
+    image.set_colorkey(colorkey)
+    image_width, image_height = image.get_size()
+    tile_table = []
+    for tile_x in range(int(image_width/width)):
+        line = []
+        tile_table.append(line)
+        for tile_y in range(int(image_height/height)):
+            rect = (tile_x*width, tile_y*height, width, height)
+            line.append(image.subsurface(rect))
+    return tile_table
+
+
+
+"""
     Game
 """
 class Game:
@@ -51,6 +74,8 @@ class Game:
 
     def load_data(self):
         self.map = Map("Data\Map\Map_1.tmx")
+        self.player_placeholder = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
+        self.player_img = self.player_placeholder[0][0]
 
     def new(self):
         # Initialize all variables
@@ -260,8 +285,7 @@ class Player(pygame.sprite.Sprite):
         self.groups = game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.image = pygame.Surface((TILESIZE, TILESIZE))
-        self.image.fill(RED)
+        self.image = game.player_img
         self.rect = self.image.get_rect()
         self.vel = vec(0, 0)
         self.pos = vec(x, y) * TILESIZE
@@ -324,7 +348,6 @@ class Wall(pygame.sprite.Sprite):
         self.y = y
         self.rect.x = self.x * TILESIZE
         self.rect.y = self.y * TILESIZE
-
 
 
 g = Game()
