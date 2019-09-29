@@ -18,8 +18,11 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 # Player Settings
 PLAYER_SPEED = 300
-PLAYER_IMG = "Data\Graphics\Player.png"
+PLAYER_IMG = "Data\Graphics\Player_pipoya_female_13_2.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
+
+# Mob Settings
+MOB_IMG = "Data\Graphics\Mobs_enemy_04_1.png"
 
 
 """
@@ -101,14 +104,17 @@ class Game:
     def load_data(self):
         self.map            = Map("Data\Map\Map_1.tmx")
         self.player_img     = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
+        self.mob_img        = load_tile_table(MOB_IMG, TILESIZE, TILESIZE)[0][0]
 
     def new(self):
         self.all_sprites    = pygame.sprite.Group()
-        self.camera         = Camera(self.map.width, self.map.height)
-        self.player         = Player(self, 10, 10)
+        self.mobs           = pygame.sprite.Group()
         self.walls          = pygame.sprite.Group()
         for x in range(10, 20):
             Wall(self, x, 5)
+        self.player         = Player(self, 10, 10)
+        self.mob            = Mob(self, 12, 12)
+        self.camera         = Camera(self.map.width, self.map.height)
 
     def run(self):
         self.gameExit = False
@@ -141,8 +147,6 @@ class Game:
         self.draw_grid()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
-        pygame.draw.rect(self.gameDisplay, WHITE, self.player.hit_rect, 2)
-        pygame.draw.rect(self.gameDisplay, WHITE, self.camera.apply(self.player), 2)
         pygame.display.flip()
 
 
@@ -408,11 +412,20 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = self.hit_rect.center
 
 
+class Mob(pygame.sprite.Sprite):
+    def __init__(self, game, x ,y):
+        self.groups = game.all_sprites, game.mobs
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.image = game.mob_img
+        self.rect = self.image.get_rect()
+        self.pos = vec(x, y) * TILESIZE
+        self.rect.center = self.pos
+
+
 class Wall(pygame.sprite.Sprite):
     def __init__(self, game, x ,y):
         self.groups = game.all_sprites, game.walls
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
         self.image = pygame.Surface((TILESIZE, TILESIZE))
         self.image.fill(GREEN)
         self.rect = self.image.get_rect()
