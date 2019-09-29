@@ -19,6 +19,7 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 # Player Settings
 PLAYER_SPEED = 300
 PLAYER_IMG = "Data\Graphics\Player.png"
+PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 
 
 """
@@ -77,6 +78,11 @@ def load_tile_table(filename, width, height, colorkey=(0,0,0)):
 
 
 
+def collide_hit_rect(one, two):
+    return one.hit_rect.colliderect(two.rect)
+
+
+
 
 
 """
@@ -85,24 +91,24 @@ def load_tile_table(filename, width, height, colorkey=(0,0,0)):
 class Game:
     def __init__(self):
         pygame.init()
-        self.gameDisplay = ScaledGame(project_title, screen_size, 60)
-        self.clock = pygame.time.Clock()
         pygame.key.set_repeat(300, 75)
-        self.dt = self.clock.tick(FPS) / 1000
+        self.gameDisplay    = ScaledGame(project_title, screen_size, 60)
+        self.clock          = pygame.time.Clock()
+        self.dt             = self.clock.tick(FPS) / 1000
         self.load_data()
         self.new()
 
     def load_data(self):
-        self.map = Map("Data\Map\Map_1.tmx")
-        self.player_img = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
+        self.map            = Map("Data\Map\Map_1.tmx")
+        self.player_img     = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
 
     def new(self):
-        self.all_sprites = pygame.sprite.Group()
-        self.player = Player(self, 10, 10)
-        self.walls = pygame.sprite.Group()
+        self.all_sprites    = pygame.sprite.Group()
+        self.camera         = Camera(self.map.width, self.map.height)
+        self.player         = Player(self, 10, 10)
+        self.walls          = pygame.sprite.Group()
         for x in range(10, 20):
             Wall(self, x, 5)
-        self.camera = Camera(self.map.width, self.map.height)
 
     def run(self):
         self.gameExit = False
@@ -135,6 +141,8 @@ class Game:
         self.draw_grid()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
+        pygame.draw.rect(self.gameDisplay, WHITE, self.player.hit_rect, 2)
+        pygame.draw.rect(self.gameDisplay, WHITE, self.camera.apply(self.player), 2)
         pygame.display.flip()
 
 
@@ -285,8 +293,8 @@ class Camera():
         return entity.rect.move(self.camera.topleft)
 
     def update(self, target):
-        x = -target.rect.x + int(WIDTH  / 2)
-        y = -target.rect.y + int(HEIGHT / 2)
+        x = -target.rect.centerx + int(WIDTH  / 2)
+        y = -target.rect.centery + int(HEIGHT / 2)
 
         # Limit to map size
         x = min(0, x)                           # Left
@@ -305,15 +313,17 @@ class Player(pygame.sprite.Sprite):
         self.vel = vec(0, 0)
         self.pos = vec(x, y) * TILESIZE
         
-        self.index          = 0
-        self.images         = game.player_img
-        self.images_bottom  = self.images[0]
-        self.images_left    = self.images[1]
-        self.images_right   = self.images[2]
-        self.images_top     = self.images[3]
-        self.images         = self.images_bottom
-        self.image          = self.images_bottom[self.index]
-        self.rect           = self.image.get_rect()
+        self.index              = 0
+        self.images             = game.player_img
+        self.images_bottom      = self.images[0]
+        self.images_left        = self.images[1]
+        self.images_right       = self.images[2]
+        self.images_top         = self.images[3]
+        self.images             = self.images_bottom
+        self.image              = self.images_bottom[self.index]
+        self.rect               = self.image.get_rect()
+        self.hit_rect           = PLAYER_HIT_RECT
+        self.hit_rect.center    = self.rect.center
     
         self.dt                 = game.dt
         self.current_time       = 0
@@ -343,24 +353,24 @@ class Player(pygame.sprite.Sprite):
 
     def collide_with_walls(self, dir):
         if dir == "x":
-            hits = pygame.sprite.spritecollide(self, self.game.walls, False)
+            hits = pygame.sprite.spritecollide(self, self.game.walls, False, collide_hit_rect)
             if hits:
                 if self.vel.x > 0:
-                    self.pos.x = hits[0].rect.left - self.rect.width
+                    self.pos.x = hits[0].rect.left - self.hit_rect.width / 2
                 if self.vel.x < 0:
-                    self.pos.x = hits[0].rect.right
+                    self.pos.x = hits[0].rect.right + self.hit_rect.width / 2
                 self.vel.x = 0
-                self.rect.x = self.pos.x
+                self.hit_rect.centerx = self.pos.x
             
         if dir == "y":
-            hits = pygame.sprite.spritecollide(self, self.game.walls, False)
+            hits = pygame.sprite.spritecollide(self, self.game.walls, False, collide_hit_rect)
             if hits:
                 if self.vel.y > 0:
-                    self.pos.y = hits[0].rect.top - self.rect.height
+                    self.pos.y = hits[0].rect.top - self.hit_rect.height / 2
                 if self.vel.y < 0:
-                    self.pos.y = hits[0].rect.bottom
+                    self.pos.y = hits[0].rect.bottom + self.hit_rect.height / 2
                 self.vel.y = 0
-                self.rect.y = self.pos.y
+                self.hit_rect.centery = self.pos.y
 
     def update_time_dependent(self):
         """
@@ -388,12 +398,14 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         self.get_keys()
         self.update_time_dependent()
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
         self.pos += self.vel * self.game.dt
-        self.rect.x = self.pos.x
+        self.hit_rect.centerx = self.pos.x
         self.collide_with_walls("x")
-        self.rect.y = self.pos.y
+        self.hit_rect.centery = self.pos.y
         self.collide_with_walls("y")
-
+        self.rect.center = self.hit_rect.center
 
 
 class Wall(pygame.sprite.Sprite):
