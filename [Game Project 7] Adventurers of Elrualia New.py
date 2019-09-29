@@ -17,13 +17,14 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 
 # Player Settings
-PLAYER_SPEED    = 300
 PLAYER_IMG      = "Data\Graphics\Player_pipoya_female_13_2.png"
+PLAYER_SPEED    = 300
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 
 # Mob Settings
-MOB_SPEED   = 150
 MOB_IMG     = "Data\Graphics\Mobs_enemy_04_1.png"
+MOB_SPEED   = 150
+MOB_HIT_RECT = pygame.Rect(0, 0, 30, 30)
 
 
 """
@@ -82,6 +83,29 @@ def load_tile_table(filename, width, height, colorkey=(0,0,0)):
 
 
 
+def collide_with_walls(sprite, group, dir):
+    if dir == "x":
+        hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
+        if hits:
+            if sprite.vel.x > 0:
+                sprite.pos.x = hits[0].rect.left - sprite.hit_rect.width / 2
+            if sprite.vel.x < 0:
+                sprite.pos.x = hits[0].rect.right + sprite.hit_rect.width / 2
+            sprite.vel.x = 0
+            sprite.hit_rect.centerx = sprite.pos.x
+        
+    if dir == "y":
+        hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
+        if hits:
+            if sprite.vel.y > 0:
+                sprite.pos.y = hits[0].rect.top - sprite.hit_rect.height / 2
+            if sprite.vel.y < 0:
+                sprite.pos.y = hits[0].rect.bottom + sprite.hit_rect.height / 2
+            sprite.vel.y = 0
+            sprite.hit_rect.centery = sprite.pos.y
+
+
+
 def collide_hit_rect(one, two):
     return one.hit_rect.colliderect(two.rect)
 
@@ -114,7 +138,9 @@ class Game:
         for x in range(10, 20):
             Wall(self, x, 5)
         self.player         = Player(self, 10, 10)
+        self.mob            = Mob(self, 4, 4)
         self.mob            = Mob(self, 12, 12)
+        self.mob            = Mob(self, 20, 20)
         self.camera         = Camera(self.map.width, self.map.height)
 
     def run(self):
@@ -356,27 +382,6 @@ class Player(pygame.sprite.Sprite):
         if self.vel.x != 0 and self.vel.y != 0:
             self.vel *= 0.7071
 
-    def collide_with_walls(self, dir):
-        if dir == "x":
-            hits = pygame.sprite.spritecollide(self, self.game.walls, False, collide_hit_rect)
-            if hits:
-                if self.vel.x > 0:
-                    self.pos.x = hits[0].rect.left - self.hit_rect.width / 2
-                if self.vel.x < 0:
-                    self.pos.x = hits[0].rect.right + self.hit_rect.width / 2
-                self.vel.x = 0
-                self.hit_rect.centerx = self.pos.x
-            
-        if dir == "y":
-            hits = pygame.sprite.spritecollide(self, self.game.walls, False, collide_hit_rect)
-            if hits:
-                if self.vel.y > 0:
-                    self.pos.y = hits[0].rect.top - self.hit_rect.height / 2
-                if self.vel.y < 0:
-                    self.pos.y = hits[0].rect.bottom + self.hit_rect.height / 2
-                self.vel.y = 0
-                self.hit_rect.centery = self.pos.y
-
     def update_time_dependent(self):
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
@@ -398,9 +403,9 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = self.pos
         self.pos += self.vel * self.game.dt
         self.hit_rect.centerx = self.pos.x
-        self.collide_with_walls("x")
+        collide_with_walls(self, self.game.walls, "x")
         self.hit_rect.centery = self.pos.y
-        self.collide_with_walls("y")
+        collide_with_walls(self, self.game.walls, "y")
         self.rect.center = self.hit_rect.center
 
 
@@ -424,6 +429,8 @@ class Mob(pygame.sprite.Sprite):
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
         self.rect               = self.image.get_rect()
+        self.hit_rect           = MOB_HIT_RECT.copy()
+        self.hit_rect.center    = self.rect.center
     
         self.dt                 = game.dt
         self.current_time       = 0
@@ -462,11 +469,13 @@ class Mob(pygame.sprite.Sprite):
         self.update_time_dependent()
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
-        self.acc = vec(MOB_SPEED, 0).rotate(-self.rot)
+        self.acc = vec(MOB_SPEED, 0).rotate(-self.rot) - self.vel
         self.vel += self.acc * self.game.dt
         self.pos +=  self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
-        self.rect.center = self.pos
-
+        self.hit_rect.centerx = self.pos.x
+        collide_with_walls(self, self.game.walls, "x")
+        self.hit_rect.centery = self.pos.y
+        collide_with_walls(self, self.game.walls, "y")
 
 
 class Wall(pygame.sprite.Sprite):
