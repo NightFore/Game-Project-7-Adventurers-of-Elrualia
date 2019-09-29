@@ -45,6 +45,23 @@ BGCOLOR     = 200, 200, 200
 """
     Helpful Functions
 """
+def load_file(path, image=False):
+    """
+    Load    : All texts/images in directory. The directory must only contain texts/images.
+    Path    : The relative or absolute path to the directory to load texts/images from.
+    Image   : Load and convert image in the direcoty path.
+    Return  : List of files.
+    """
+    file = []
+    for file_name in os.listdir(path):
+        if image == False:
+            file.append(path + os.sep + file_name)
+        if image == True:
+            file.append(pygame.image.load(path + os.sep + file_name).convert())
+    return file
+
+
+
 def load_tile_table(filename, width, height, colorkey=(0,0,0)):
     image = pygame.image.load(filename).convert()
     image.set_colorkey(colorkey)
@@ -60,6 +77,8 @@ def load_tile_table(filename, width, height, colorkey=(0,0,0)):
 
 
 
+
+
 """
     Game
 """
@@ -69,16 +88,16 @@ class Game:
         self.gameDisplay = ScaledGame(project_title, screen_size, 60)
         self.clock = pygame.time.Clock()
         pygame.key.set_repeat(300, 75)
+        self.dt = self.clock.tick(FPS) / 1000
         self.load_data()
         self.new()
 
     def load_data(self):
         self.map = Map("Data\Map\Map_1.tmx")
         self.player_placeholder = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
-        self.player_img = self.player_placeholder[0][0]
+        self.player_img = self.player_placeholder[0]
 
     def new(self):
-        # Initialize all variables
         self.all_sprites = pygame.sprite.Group()
         self.player = Player(self, 10, 10)
         self.walls = pygame.sprite.Group()
@@ -262,7 +281,6 @@ class Camera():
         self.camera = pygame.Rect(0, 0, width, height)
         self.width  = width
         self.height = height
-        print(height)
 
     def apply(self, entity):
         return entity.rect.move(self.camera.topleft)
@@ -285,11 +303,48 @@ class Player(pygame.sprite.Sprite):
         self.groups = game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.image = game.player_img
+        
+        self.index = 0
+        if isinstance(game.player_img, str):
+            self.images = load_file(game.player_img, image=True)
+        elif isinstance(game.player_img, list):
+            self.images = game.player_img
+        self.image = self.images[self.index]
         self.rect = self.image.get_rect()
+        
         self.vel = vec(0, 0)
         self.pos = vec(x, y) * TILESIZE
+        
+        self.dt = game.dt
+        self.current_time       = 0
+        self.current_frame      = 0
+        self.animation_time     = 0.1   # self.animation_time    = 0.1
+        self.animation_frames   = 3     # self.animation_frames  = 6
 
+    def update_time_dependent(self):
+        """
+        Updates the image of Sprite approximately every 0.1 second.
+
+        Args:
+            dt: Time elapsed between each frame.
+        """
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+    def update_frame_dependent(self):
+        """
+        Updates the image of Sprite every 6 frame (approximately every 0.1 second if frame rate is 60).
+        """
+        self.current_frame += 1
+        if self.current_frame >= self.animation_frames:
+            self.current_frame = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+        
     def get_keys(self):
         self.vel = vec(0, 0)
         keys = pygame.key.get_pressed()
@@ -333,6 +388,13 @@ class Player(pygame.sprite.Sprite):
         self.collide_with_walls("x")
         self.rect.y = self.pos.y
         self.collide_with_walls("y")
+    
+        """
+        This is the method that's being called when 'all_sprites.update(dt)' is called.
+        Switch between the two update methods by commenting/uncommenting.
+        """
+        self.update_time_dependent()
+        # self.update_frame_dependent()
 
 
 
