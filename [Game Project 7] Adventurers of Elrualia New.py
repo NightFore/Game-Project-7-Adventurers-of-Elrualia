@@ -104,7 +104,7 @@ class Game:
     def load_data(self):
         self.map            = Map("Data\Map\Map_1.tmx")
         self.player_img     = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
-        self.mob_img        = load_tile_table(MOB_IMG, TILESIZE, TILESIZE)[0][0]
+        self.mob_img        = load_tile_table(MOB_IMG, TILESIZE, TILESIZE)
 
     def new(self):
         self.all_sprites    = pygame.sprite.Group()
@@ -318,7 +318,7 @@ class Player(pygame.sprite.Sprite):
         self.pos = vec(x, y) * TILESIZE
         
         self.index              = 0
-        self.images             = game.player_img
+        self.images             = self.game.player_img
         self.images_bottom      = self.images[0]
         self.images_left        = self.images[1]
         self.images_right       = self.images[2]
@@ -377,12 +377,6 @@ class Player(pygame.sprite.Sprite):
                 self.hit_rect.centery = self.pos.y
 
     def update_time_dependent(self):
-        """
-        Updates the image of Sprite approximately every 0.1 second.
-
-        Args:
-            dt: Time elapsed between each frame.
-        """
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
             self.current_time = 0
@@ -390,9 +384,6 @@ class Player(pygame.sprite.Sprite):
             self.image = self.images[self.index]
 
     def update_frame_dependent(self):
-        """
-        Updates the image of Sprite every 6 frame (approximately every 0.1 second if frame rate is 60).
-        """
         self.current_frame += 1
         if self.current_frame >= self.animation_frames:
             self.current_frame = 0
@@ -412,14 +403,63 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = self.hit_rect.center
 
 
+
 class Mob(pygame.sprite.Sprite):
     def __init__(self, game, x ,y):
         self.groups = game.all_sprites, game.mobs
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.image = game.mob_img
-        self.rect = self.image.get_rect()
+        self.game = game
         self.pos = vec(x, y) * TILESIZE
+        self.rot = 0
+        
+        self.index              = 0
+        self.images             = self.game.mob_img
+        self.images_bottom      = self.images[0]
+        self.images_left        = self.images[1]
+        self.images_right       = self.images[2]
+        self.images_top         = self.images[3]
+        self.images             = self.images_bottom
+        self.image              = self.images_bottom[self.index]
+        self.rect               = self.image.get_rect()
+    
+        self.dt                 = game.dt
+        self.current_time       = 0
+        self.current_frame      = 0
+        self.animation_time     = 0.15
+        self.animation_frames   = 6
+
+    def update_angle(self):
+        self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
+        if -135 <= self.rot <= -45:
+            self.images = self.images_bottom
+        if -180 <= self.rot <= -135 or 135 <=  self.rot <= 180:
+            self.images = self.images_left
+        if -0 <= self.rot <= 45 or -45 <=  self.rot <= 0:
+            self.images = self.images_right
+        if 45 <=  self.rot <= 135:
+            self.images = self.images_top
+        
+
+    def update_time_dependent(self):
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+    def update_frame_dependent(self):
+        self.current_frame += 1
+        if self.current_frame >= self.animation_frames:
+            self.current_frame = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+    def update(self):
+        self.update_angle()
+        self.update_time_dependent()
+        self.rect = self.image.get_rect()
         self.rect.center = self.pos
+
 
 
 class Wall(pygame.sprite.Sprite):
