@@ -67,10 +67,10 @@ def load_tile_table(filename, width, height, colorkey=(0,0,0)):
     image.set_colorkey(colorkey)
     image_width, image_height = image.get_size()
     tile_table = []
-    for tile_x in range(int(image_width/width)):
+    for tile_y in range(int(image_height/height)):
         line = []
         tile_table.append(line)
-        for tile_y in range(int(image_height/height)):
+        for tile_x in range(int(image_width/width)):
             rect = (tile_x*width, tile_y*height, width, height)
             line.append(image.subsurface(rect))
     return tile_table
@@ -94,8 +94,7 @@ class Game:
 
     def load_data(self):
         self.map = Map("Data\Map\Map_1.tmx")
-        self.player_placeholder = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
-        self.player_img = self.player_placeholder[0]
+        self.player_img = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
 
     def new(self):
         self.all_sprites = pygame.sprite.Group()
@@ -303,46 +302,24 @@ class Player(pygame.sprite.Sprite):
         self.groups = game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        
-        self.index = 0
-        if isinstance(game.player_img, str):
-            self.images = load_file(game.player_img, image=True)
-        elif isinstance(game.player_img, list):
-            self.images = game.player_img
-        self.image = self.images[self.index]
-        self.rect = self.image.get_rect()
-        
         self.vel = vec(0, 0)
         self.pos = vec(x, y) * TILESIZE
         
-        self.dt = game.dt
+        self.index          = 0
+        self.images         = game.player_img
+        self.images_bottom  = self.images[0]
+        self.images_left    = self.images[1]
+        self.images_right   = self.images[2]
+        self.images_top     = self.images[3]
+        self.images         = self.images_bottom
+        self.image          = self.images_bottom[self.index]
+        self.rect           = self.image.get_rect()
+    
+        self.dt                 = game.dt
         self.current_time       = 0
         self.current_frame      = 0
-        self.animation_time     = 0.1   # self.animation_time    = 0.1
-        self.animation_frames   = 3     # self.animation_frames  = 6
-
-    def update_time_dependent(self):
-        """
-        Updates the image of Sprite approximately every 0.1 second.
-
-        Args:
-            dt: Time elapsed between each frame.
-        """
-        self.current_time += self.dt
-        if self.current_time >= self.animation_time:
-            self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
-
-    def update_frame_dependent(self):
-        """
-        Updates the image of Sprite every 6 frame (approximately every 0.1 second if frame rate is 60).
-        """
-        self.current_frame += 1
-        if self.current_frame >= self.animation_frames:
-            self.current_frame = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
+        self.animation_time     = 0.15
+        self.animation_frames   = 6
 
         
     def get_keys(self):
@@ -350,12 +327,16 @@ class Player(pygame.sprite.Sprite):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vel.x = -PLAYER_SPEED
+            self.images = self.images_left
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.vel.x = +PLAYER_SPEED
+            self.images = self.images_right
         if keys[pygame.K_UP] or keys[pygame.K_w]:
             self.vel.y = -PLAYER_SPEED
+            self.images = self.images_top
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             self.vel.y = +PLAYER_SPEED
+            self.images = self.images_bottom
 
         if self.vel.x != 0 and self.vel.y != 0:
             self.vel *= 0.7071
@@ -381,20 +362,37 @@ class Player(pygame.sprite.Sprite):
                 self.vel.y = 0
                 self.rect.y = self.pos.y
 
+    def update_time_dependent(self):
+        """
+        Updates the image of Sprite approximately every 0.1 second.
+
+        Args:
+            dt: Time elapsed between each frame.
+        """
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+    def update_frame_dependent(self):
+        """
+        Updates the image of Sprite every 6 frame (approximately every 0.1 second if frame rate is 60).
+        """
+        self.current_frame += 1
+        if self.current_frame >= self.animation_frames:
+            self.current_frame = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
     def update(self):
         self.get_keys()
+        self.update_time_dependent()
         self.pos += self.vel * self.game.dt
         self.rect.x = self.pos.x
         self.collide_with_walls("x")
         self.rect.y = self.pos.y
         self.collide_with_walls("y")
-    
-        """
-        This is the method that's being called when 'all_sprites.update(dt)' is called.
-        Switch between the two update methods by commenting/uncommenting.
-        """
-        self.update_time_dependent()
-        # self.update_frame_dependent()
 
 
 
