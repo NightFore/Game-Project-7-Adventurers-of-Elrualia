@@ -17,12 +17,13 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 
 # Player Settings
-PLAYER_SPEED = 300
-PLAYER_IMG = "Data\Graphics\Player_pipoya_female_13_2.png"
+PLAYER_SPEED    = 300
+PLAYER_IMG      = "Data\Graphics\Player_pipoya_female_13_2.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 
 # Mob Settings
-MOB_IMG = "Data\Graphics\Mobs_enemy_04_1.png"
+MOB_SPEED   = 150
+MOB_IMG     = "Data\Graphics\Mobs_enemy_04_1.png"
 
 
 """
@@ -103,8 +104,8 @@ class Game:
 
     def load_data(self):
         self.map            = Map("Data\Map\Map_1.tmx")
-        self.player_img     = load_tile_table(PLAYER_IMG, TILESIZE, TILESIZE)
-        self.mob_img        = load_tile_table(MOB_IMG, TILESIZE, TILESIZE)
+        self.player_img     = load_tile_table(PLAYER_IMG, 32, 32)
+        self.mob_img        = load_tile_table(MOB_IMG, 32, 32)
 
     def new(self):
         self.all_sprites    = pygame.sprite.Group()
@@ -409,6 +410,8 @@ class Mob(pygame.sprite.Sprite):
         self.groups = game.all_sprites, game.mobs
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
+        self.vel = vec(0, 0)
+        self.acc = vec(0, 0)
         self.pos = vec(x, y) * TILESIZE
         self.rot = 0
         
@@ -458,6 +461,10 @@ class Mob(pygame.sprite.Sprite):
         self.update_angle()
         self.update_time_dependent()
         self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+        self.acc = vec(MOB_SPEED, 0).rotate(-self.rot)
+        self.vel += self.acc * self.game.dt
+        self.pos +=  self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
         self.rect.center = self.pos
 
 
