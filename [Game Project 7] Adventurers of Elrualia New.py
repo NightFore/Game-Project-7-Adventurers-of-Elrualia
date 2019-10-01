@@ -27,10 +27,11 @@ SWORD_SPEED     = 50
 SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
+SWORD_DAMAGE    = 10
 
 # Mob Settings
 MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
-MOB_SPEED       = 150
+MOB_SPEED       = 125
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 
 
@@ -178,7 +179,8 @@ class Game:
         self.camera.update(self.player)
         hits = pygame.sprite.groupcollide(self.mobs, self.sword, False, True)
         for hit in hits:
-            hit.kill()
+            hit.health -= SWORD_DAMAGE
+            hit.vel = vec(0, 0)
 
 
     def draw(self):
@@ -449,6 +451,8 @@ class Mob(pygame.sprite.Sprite):
         self.vel = vec(0, 0)
         self.acc = vec(0, 0)
         self.rot = 0
+
+        self.health = 20
         
         self.index              = 0
         self.images             = self.game.mob_img
@@ -506,6 +510,8 @@ class Mob(pygame.sprite.Sprite):
         collide_with_walls(self, self.game.walls, "x")
         self.hit_rect.centery = self.pos.y
         collide_with_walls(self, self.game.walls, "y")
+        if self.health <= 0:
+            self.kill()
 
 
 class Sword(pygame.sprite.Sprite):
