@@ -18,8 +18,15 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 # Player Settings
 PLAYER_IMG      = "Data\Graphics\Player_pipoya_female_13_2.png"
+PLAYER_HEALTH   = 100
 PLAYER_SPEED    = 300
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
+
+# Mob Settings
+MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
+MOB_HEALTH      = 25
+MOB_SPEED       = 125
+MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 
 # Sword Settings
 SWORD_IMG       = "Data\Graphics\Sword_PixelHole_x2.png"
@@ -28,11 +35,6 @@ SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
 SWORD_DAMAGE    = 10
-
-# Mob Settings
-MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
-MOB_SPEED       = 125
-MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 
 
 """
@@ -45,6 +47,8 @@ DARKGREEN   = 60,  210, 120
 
 BLUE        = 0,   0,   255
 LIGHTBLUE   = 140, 205, 245
+
+YELLOW      = 255, 255, 0
 
 GREY        = 150, 170, 210
 LIGHTGREY   = 100, 100, 100
@@ -112,12 +116,21 @@ def collide_with_walls(sprite, group, dir):
             sprite.vel.y = 0
             sprite.hit_rect.centery = sprite.pos.y
 
-
-
 def collide_hit_rect(one, two):
     return one.hit_rect.colliderect(two.rect)
 
 
+
+def draw_health(self):
+    if 100*self.health/self.maxhealth > 60:
+        color = GREEN
+    elif 100*self.health/self.maxhealth > 30:
+        color = YELLOW
+    else:
+        color = RED
+    width = int(self.rect.width * self.health/self.maxhealth)
+    pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
+        
 
 
 
@@ -355,11 +368,10 @@ class Player(pygame.sprite.Sprite):
         self.groups = game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.pos = vec(x, y) * TILESIZE
-        self.vel = vec(0, 0)
-        self.rot = 0
-        self.last_slash = 0
-        self.side = 0
+        self.maxhealth          = PLAYER_HEALTH
+        self.health             = self.maxhealth
+        self.last_slash         = 0
+        self.side               = 0
     
         self.index              = 0
         self.images             = self.game.player_img
@@ -369,7 +381,12 @@ class Player(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
+        
+        self.pos                = vec(x, y) * TILESIZE
+        self.vel                = vec(0, 0)
+        self.rot                = 0
         self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
         self.hit_rect           = PLAYER_HIT_RECT
         self.hit_rect.center    = self.rect.center
     
@@ -431,14 +448,22 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         self.get_keys()
         self.update_time_dependent()
+        
+        self.image = pygame.transform.rotate(self.image, 0)
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
+        
         self.pos += self.vel * self.game.dt
+        
         self.hit_rect.centerx = self.pos.x
         collide_with_walls(self, self.game.walls, "x")
         self.hit_rect.centery = self.pos.y
         collide_with_walls(self, self.game.walls, "y")
         self.rect.center = self.hit_rect.center
+
+        draw_health(self)
+        if self.health <= 0:
+            self.kill()
 
 
 
@@ -447,12 +472,8 @@ class Mob(pygame.sprite.Sprite):
         self.groups = game.all_sprites, game.mobs
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.pos = vec(x, y) * TILESIZE
-        self.vel = vec(0, 0)
-        self.acc = vec(0, 0)
-        self.rot = 0
-
-        self.health = 20
+        self.maxhealth          = MOB_HEALTH
+        self.health             = self.maxhealth
         
         self.index              = 0
         self.images             = self.game.mob_img
@@ -462,7 +483,13 @@ class Mob(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
+    
+        self.pos = vec(x, y) * TILESIZE
+        self.vel = vec(0, 0)
+        self.acc = vec(0, 0)
+        self.rot = 0
         self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
         self.hit_rect           = MOB_HIT_RECT.copy()
         self.hit_rect.center    = self.rect.center
     
@@ -473,7 +500,6 @@ class Mob(pygame.sprite.Sprite):
         self.animation_frames   = 6
 
     def update_angle(self):
-        self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
         if -135 <= self.rot <= -45:
             self.images = self.images_bottom
         if -180 <= self.rot <= -135 or 135 <=  self.rot <= 180:
@@ -483,7 +509,6 @@ class Mob(pygame.sprite.Sprite):
         if 45 <=  self.rot <= 135:
             self.images = self.images_top
         
-
     def update_time_dependent(self):
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
@@ -501,15 +526,23 @@ class Mob(pygame.sprite.Sprite):
     def update(self):
         self.update_angle()
         self.update_time_dependent()
+        
+        self.image = pygame.transform.rotate(self.image, 0)
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
+
+        self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
         self.acc = vec(MOB_SPEED, 0).rotate(-self.rot) - self.vel
         self.vel += self.acc * self.game.dt
-        self.pos +=  self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
+        self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
+
         self.hit_rect.centerx = self.pos.x
         collide_with_walls(self, self.game.walls, "x")
         self.hit_rect.centery = self.pos.y
         collide_with_walls(self, self.game.walls, "y")
+        self.rect.center = self.hit_rect.center
+    
+        draw_health(self)
         if self.health <= 0:
             self.kill()
 
