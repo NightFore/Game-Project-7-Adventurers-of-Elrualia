@@ -26,6 +26,8 @@ PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
 MOB_HEALTH      = 25
 MOB_SPEED       = 125
+MOB_DAMAGE      = 10
+MOB_KNOCKBACK   = 20
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 
 # Sword Settings
@@ -99,9 +101,9 @@ def collide_with_walls(sprite, group, dir):
     if dir == "x":
         hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
         if hits:
-            if sprite.vel.x > 0:
+            if hits[0].rect.centerx > sprite.hit_rect.centerx:
                 sprite.pos.x = hits[0].rect.left - sprite.hit_rect.width / 2
-            if sprite.vel.x < 0:
+            if hits[0].rect.centerx < sprite.hit_rect.centerx:
                 sprite.pos.x = hits[0].rect.right + sprite.hit_rect.width / 2
             sprite.vel.x = 0
             sprite.hit_rect.centerx = sprite.pos.x
@@ -109,9 +111,9 @@ def collide_with_walls(sprite, group, dir):
     if dir == "y":
         hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
         if hits:
-            if sprite.vel.y > 0:
+            if hits[0].rect.centery > sprite.hit_rect.centery:
                 sprite.pos.y = hits[0].rect.top - sprite.hit_rect.height / 2
-            if sprite.vel.y < 0:
+            if hits[0].rect.centery < sprite.hit_rect.centery:
                 sprite.pos.y = hits[0].rect.bottom + sprite.hit_rect.height / 2
             sprite.vel.y = 0
             sprite.hit_rect.centery = sprite.pos.y
@@ -128,6 +130,8 @@ def draw_health(self):
         color = YELLOW
     else:
         color = RED
+    if self.health < 0:
+        self.health = 0
     width = int(self.rect.width * self.health/self.maxhealth)
     pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
         
@@ -167,8 +171,8 @@ class Game:
         self.camera         = Camera(self.map.width, self.map.height)
 
     def run(self):
-        self.gameExit = False
-        while not self.gameExit:
+        self.playing = True
+        while self.playing:
             self.dt = self.clock.tick(FPS) / 1000
             self.events()
             self.update()
@@ -190,6 +194,17 @@ class Game:
         self.gameDisplay.update()
         self.all_sprites.update()
         self.camera.update(self.player)
+    
+        hits = pygame.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
+        for hit in hits:
+            self.player.health -= MOB_DAMAGE
+            hit.vel = vec(0, 0)
+            if self.player.health <= 0:
+                self.playing = False
+            
+        if hits:
+            self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
+        
         hits = pygame.sprite.groupcollide(self.mobs, self.sword, False, True)
         for hit in hits:
             hit.health -= SWORD_DAMAGE
@@ -588,4 +603,6 @@ class Wall(pygame.sprite.Sprite):
 
 
 g = Game()
-g.run()
+while True:
+    g.new()
+    g.run()
