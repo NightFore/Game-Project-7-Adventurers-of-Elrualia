@@ -33,10 +33,11 @@ MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 # Sword Settings
 SWORD_IMG       = "Data\Graphics\Sword_PixelHole_x2.png"
 SWORD_SPEED     = 50
+SWORD_DAMAGE    = 10
+SWORD_KNOCKBACK = 20
 SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
-SWORD_DAMAGE    = 10
 
 
 """
@@ -194,23 +195,28 @@ class Game:
         self.gameDisplay.update()
         self.all_sprites.update()
         self.camera.update(self.player)
-    
+
+        # Player
         hits = pygame.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
         for hit in hits:
             self.player.health -= MOB_DAMAGE
+            self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
             hit.vel = vec(0, 0)
             if self.player.health <= 0:
                 self.playing = False
-            
-        if hits:
-            self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
-        
-        hits = pygame.sprite.groupcollide(self.mobs, self.sword, False, True)
-        for hit in hits:
-            hit.health -= SWORD_DAMAGE
-            hit.vel = vec(0, 0)
 
+        # Sword
+        hits_1 = pygame.sprite.groupcollide(self.mobs, self.sword, False, False)
+        hits_2 = pygame.sprite.groupcollide(self.sword, self.mobs, False, False)
+        for mobs in hits_1:
+            for sword in hits_2:
+                if sword.hit == False:
+                    sword.hit = True
+                    mobs.health -= SWORD_DAMAGE
+                    mobs.pos += vec(SWORD_KNOCKBACK, 0).rotate(-sword.rot)
+                    mobs.vel = vec(0, 0)
 
+    
     def draw(self):
         self.gameDisplay.fill(BGCOLOR)
         self.draw_grid()
@@ -385,8 +391,12 @@ class Player(pygame.sprite.Sprite):
         self.game = game
         self.maxhealth          = PLAYER_HEALTH
         self.health             = self.maxhealth
-        self.last_slash         = 0
         self.side               = 0
+        self.last_slash         = 0
+        
+        self.rot                = 0
+        self.pos                = vec(x, y) * TILESIZE
+        self.vel                = vec(0, 0)
     
         self.index              = 0
         self.images             = self.game.player_img
@@ -396,10 +406,6 @@ class Player(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
-        
-        self.pos                = vec(x, y) * TILESIZE
-        self.vel                = vec(0, 0)
-        self.rot                = 0
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = PLAYER_HIT_RECT
@@ -443,8 +449,7 @@ class Player(pygame.sprite.Sprite):
             if now - self.last_slash > SWORD_RATE:
                 self.last_slash = now
                 pos = self.pos + SWORD_OFFSET.rotate(-self.rot)
-                dir = vec(1, 0).rotate(-self.rot)
-                Sword(self.game, pos, dir, self.side)
+                Sword(self.game, pos, self.rot, self.side)
             
     def update_time_dependent(self):
         self.current_time += self.dt
@@ -489,6 +494,11 @@ class Mob(pygame.sprite.Sprite):
         self.game = game
         self.maxhealth          = MOB_HEALTH
         self.health             = self.maxhealth
+    
+        self.rot = 0
+        self.pos = vec(x, y) * TILESIZE
+        self.vel = vec(0, 0)
+        self.acc = vec(0, 0)
         
         self.index              = 0
         self.images             = self.game.mob_img
@@ -498,11 +508,6 @@ class Mob(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
-    
-        self.pos = vec(x, y) * TILESIZE
-        self.vel = vec(0, 0)
-        self.acc = vec(0, 0)
-        self.rot = 0
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = MOB_HIT_RECT.copy()
@@ -563,13 +568,16 @@ class Mob(pygame.sprite.Sprite):
 
 
 class Sword(pygame.sprite.Sprite):
-    def __init__(self, game, pos, dir, side):
+    def __init__(self, game, pos, rot, side):
         self.groups = game.all_sprites, game.sword
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
-        self.pos = vec(pos)
-        self.vel = dir * SWORD_SPEED
-        self.spawn_time = pygame.time.get_ticks()
+        self.game           = game
+        self.hit            = False
+        self.spawn_time     = pygame.time.get_ticks()
+    
+        self.rot            = rot
+        self.pos            = vec(pos)
+        self.vel            = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
     
         self.image          = self.game.sword_img
         self.image_bottom   = pygame.transform.rotate(self.image, +180)
