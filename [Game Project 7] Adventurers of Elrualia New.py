@@ -18,20 +18,21 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 # Player Settings
 PLAYER_IMG      = "Data\Graphics\Player_pipoya_female_13_2.png"
+PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 PLAYER_HEALTH   = 100
 PLAYER_SPEED    = 300
-PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 
 # Mob Settings
 MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
+MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 MOB_HEALTH      = 25
 MOB_SPEED       = 125
 MOB_DAMAGE      = 10
 MOB_KNOCKBACK   = 20
-MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 
 # Sword Settings
 SWORD_IMG       = "Data\Graphics\Sword_PixelHole_x2.png"
+SWORD_HIT_RECT  = pygame.Rect(0, 0, 30, 30)
 SWORD_SPEED     = 50
 SWORD_DAMAGE    = 10
 SWORD_KNOCKBACK = 20
@@ -52,6 +53,7 @@ BLUE        = 0,   0,   255
 LIGHTBLUE   = 140, 205, 245
 
 YELLOW      = 255, 255, 0
+CYAN        = 0,  255,  255
 
 GREY        = 150, 170, 210
 LIGHTGREY   = 100, 100, 100
@@ -161,6 +163,7 @@ class Game:
         self.sword_img      = pygame.image.load(SWORD_IMG).convert_alpha()
 
     def new(self):
+        self.draw_debug     = False
         self.camera         = Camera(self.map.width, self.map.height)
         self.all_sprites    = pygame.sprite.Group()
         self.mobs           = pygame.sprite.Group()
@@ -197,6 +200,12 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit_game()
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.quit_game()
+                if event.key == pygame.K_h:
+                    self.draw_debug = not self.draw_debug
 
 
     def update(self):
@@ -213,8 +222,8 @@ class Game:
                 self.playing = False
 
         # Sword
-        hits_1 = pygame.sprite.groupcollide(self.mobs, self.sword, False, False)
-        hits_2 = pygame.sprite.groupcollide(self.sword, self.mobs, False, False)
+        hits_1 = pygame.sprite.groupcollide(self.mobs, self.sword, False, False, collide_hit_rect)
+        hits_2 = pygame.sprite.groupcollide(self.sword, self.mobs, False, False, collide_hit_rect)
         for mobs in hits_1:
             for sword in hits_2:
                 if sword.hit == False:
@@ -229,6 +238,11 @@ class Game:
         #self.draw_grid()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
+            if self.draw_debug:
+                pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(sprite.hit_rect), 1)
+        if self.draw_debug:
+            for wall in self.walls:
+                pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(wall.rect), 1)
         self.gameDisplay.update()
 
 
@@ -592,27 +606,31 @@ class Sword(pygame.sprite.Sprite):
     def __init__(self, game, pos, rot, side):
         self.groups = game.all_sprites, game.sword
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.game           = game
-        self.hit            = False
-        self.spawn_time     = pygame.time.get_ticks()
+        self.game               = game
+        self.hit                = False
+        self.spawn_time         = pygame.time.get_ticks()
     
-        self.rot            = rot
-        self.pos            = vec(pos)
-        self.vel            = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
+        self.rot                = rot
+        self.pos                = vec(pos)
+        self.vel                = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
     
-        self.image          = self.game.sword_img
-        self.image_bottom   = pygame.transform.rotate(self.image, +180)
-        self.image_left     = pygame.transform.rotate(self.image, +90)
-        self.image_right    = pygame.transform.rotate(self.image, -90)
-        self.image_top      = pygame.transform.rotate(self.image, 0)
-        self.image_list     = [self.image_left, self.image_right, self.image_top, self.image_bottom]
-        self.image          = self.image_list[side]
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos
+        self.image              = self.game.sword_img
+        self.image_bottom       = pygame.transform.rotate(self.image, +180)
+        self.image_left         = pygame.transform.rotate(self.image, +90)
+        self.image_right        = pygame.transform.rotate(self.image, -90)
+        self.image_top          = pygame.transform.rotate(self.image, 0)
+        self.image_list         = [self.image_left, self.image_right, self.image_top, self.image_bottom]
+        self.image              = self.image_list[side]
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = SWORD_HIT_RECT
+        self.hit_rect.center    = self.rect.center
 
     def update(self):
         self.pos += self.vel * self.game.dt
         self.rect.center = self.pos
+        self.hit_rect.centerx = self.pos.x
+        self.hit_rect.centery = self.pos.y
         if pygame.time.get_ticks() - self.spawn_time > SWORD_LIFETIME:
             self.kill()
 
