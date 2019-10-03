@@ -154,22 +154,21 @@ class Game:
 
     def load_data(self):
         self.map            = Map("Data\Map\Map_1.tmx")
+        self.map_img        = self.map.make_map()
+        self.map_rect       = self.map_img.get_rect()
         self.player_img     = load_tile_table(PLAYER_IMG, 32, 32)
         self.mob_img        = load_tile_table(MOB_IMG, 32, 32)
         self.sword_img      = pygame.image.load(SWORD_IMG).convert_alpha()
 
     def new(self):
+        self.camera         = Camera(self.map.width, self.map.height)
         self.all_sprites    = pygame.sprite.Group()
         self.mobs           = pygame.sprite.Group()
         self.sword          = pygame.sprite.Group()
         self.walls          = pygame.sprite.Group()
-        for x in range(10, 20):
-            Wall(self, x, 5)
+    
         self.player         = Player(self, 10, 10)
         self.mob            = Mob(self, 4, 4)
-        self.mob            = Mob(self, 12, 12)
-        self.mob            = Mob(self, 20, 20)
-        self.camera         = Camera(self.map.width, self.map.height)
 
     def run(self):
         self.playing = True
@@ -192,7 +191,6 @@ class Game:
 
 
     def update(self):
-        self.gameDisplay.update()
         self.all_sprites.update()
         self.camera.update(self.player)
 
@@ -218,11 +216,11 @@ class Game:
 
     
     def draw(self):
-        self.gameDisplay.fill(BGCOLOR)
+        self.gameDisplay.blit(self.map_img, self.camera.apply_rect(self.map_rect))
         self.draw_grid()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
-        pygame.display.flip()
+        self.gameDisplay.update()
 
 
     def draw_grid(self):
@@ -360,6 +358,20 @@ class Map():
         self.width      = self.tilewidth  * TILESIZE
         self.height     = self.tileheight * TILESIZE
 
+    def render(self, surface):
+        ti = self.tmxdata.get_tile_image_by_gid
+        for layer in self.tmxdata.visible_layers:
+            if isinstance(layer, pytmx.TiledTileLayer):
+                for x, y, gid in layer:
+                    tile = ti(gid)
+                    if tile:
+                        surface.blit(tile, (x * self.tmxdata.tilewidth, y * self.tmxdata.tileheight))
+
+    def make_map(self):
+        temp_surface = pygame.Surface((self.width, self.height))
+        self.render(temp_surface)
+        return temp_surface
+
 
 
 class Camera():
@@ -370,6 +382,9 @@ class Camera():
 
     def apply(self, entity):
         return entity.rect.move(self.camera.topleft)
+
+    def apply_rect(self, rect):
+        return rect.move(self.camera.topleft)
 
     def update(self, target):
         x = -target.rect.centerx + int(WIDTH  / 2)
