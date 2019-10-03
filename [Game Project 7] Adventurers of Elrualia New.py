@@ -353,10 +353,8 @@ class ScaledGame(pygame.Surface):
 class Map():
     def __init__(self, filename):
         self.tmxdata    = pytmx.load_pygame(filename, pixelalpha=True)
-        self.tilewidth  = self.tmxdata.tilewidth
-        self.tileheight = self.tmxdata.tileheight
-        self.width      = self.tilewidth  * TILESIZE
-        self.height     = self.tileheight * TILESIZE
+        self.width      = self.tmxdata.width  * self.tmxdata.tilewidth
+        self.height     = self.tmxdata.height * self.tmxdata.tileheight
 
     def render(self, surface):
         ti = self.tmxdata.get_tile_image_by_gid
@@ -379,7 +377,6 @@ class Camera():
         self.camera = pygame.Rect(0, 0, width, height)
         self.width  = width
         self.height = height
-
     def apply(self, entity):
         return entity.rect.move(self.camera.topleft)
 
@@ -394,7 +391,7 @@ class Camera():
         x = min(0, x)                           # Left
         x = max(-(self.width-WIDTH), x)         # Right
         y = min(0, y)                           # Top
-        y = max(-(self.height - HEIGHT), y)     # Bottom
+        y = max(-(self.height-HEIGHT), y)       # Bottom
         self.camera = pygame.Rect(x, y, self.width, self.height)
     
 
