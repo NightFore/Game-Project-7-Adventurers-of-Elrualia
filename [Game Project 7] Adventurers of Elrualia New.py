@@ -166,9 +166,18 @@ class Game:
         self.mobs           = pygame.sprite.Group()
         self.sword          = pygame.sprite.Group()
         self.walls          = pygame.sprite.Group()
-    
-        self.player         = Player(self, 10, 10)
-        self.mob            = Mob(self, 4, 4)
+
+        for tile_layer in self.map.tmxdata.layers:
+            if tile_layer.name == "collision":
+                for x, y, image in tile_layer.tiles():
+                    Obstacle(self, x, y, self.map.tmxdata.tilewidth, self.map.tmxdata.tileheight)
+
+        for tile_object in self.map.tmxdata.objects:
+            if tile_object.name == "player":
+                self.player = Player(self, tile_object.x, tile_object.y)
+            if tile_object.name == "mob":
+                self.mob = Mob(self, tile_object.x, tile_object.y)
+
 
     def run(self):
         self.playing = True
@@ -217,7 +226,7 @@ class Game:
     
     def draw(self):
         self.gameDisplay.blit(self.map_img, self.camera.apply_rect(self.map_rect))
-        self.draw_grid()
+        #self.draw_grid()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
         self.gameDisplay.update()
@@ -407,7 +416,7 @@ class Player(pygame.sprite.Sprite):
         self.last_slash         = 0
         
         self.rot                = 0
-        self.pos                = vec(x, y) * TILESIZE
+        self.pos                = vec(x, y)
         self.vel                = vec(0, 0)
     
         self.index              = 0
@@ -508,7 +517,7 @@ class Mob(pygame.sprite.Sprite):
         self.health             = self.maxhealth
     
         self.rot = 0
-        self.pos = vec(x, y) * TILESIZE
+        self.pos = vec(x, y)
         self.vel = vec(0, 0)
         self.acc = vec(0, 0)
         
@@ -621,6 +630,19 @@ class Wall(pygame.sprite.Sprite):
         self.rect.x = self.x * TILESIZE
         self.rect.y = self.y * TILESIZE
 
+
+
+class Obstacle(pygame.sprite.Sprite):
+    def __init__(self, game, x, y, w, h):
+        self.groups = game.walls
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.rect = pygame.Rect(x, y, w, h)
+        self.hit_rect = self.rect
+        self.x = x
+        self.y = y
+        self.rect.x = self.x * w
+        self.rect.y = self.y * h
 
 g = Game()
 while True:
