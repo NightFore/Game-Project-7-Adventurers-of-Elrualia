@@ -25,6 +25,7 @@ PLAYER_SPEED    = 300
 # Mob Settings
 MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
+MOB_RADIUS      = 30
 MOB_HEALTH      = 25
 MOB_SPEED       = 125
 MOB_DAMAGE      = 10
@@ -578,6 +579,14 @@ class Mob(pygame.sprite.Sprite):
             self.index = (self.index + 1) % len(self.images)
             self.image = self.images[self.index]
 
+    def avoid_mobs(self):
+        for mob in self.game.mobs:
+            if mob != self:
+               dist = self.pos - mob.pos
+               if 0 < dist.length() < MOB_RADIUS:
+                   self.acc += dist.normalize()
+        
+
     def update(self):
         self.update_angle()
         self.update_time_dependent()
@@ -587,7 +596,10 @@ class Mob(pygame.sprite.Sprite):
         self.rect.center = self.pos
 
         self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
-        self.acc = vec(MOB_SPEED, 0).rotate(-self.rot) - self.vel
+        self.acc = vec(1, 0).rotate(-self.rot)
+        self.avoid_mobs()
+        self.acc.scale_to_length(MOB_SPEED)
+        self.acc -= self.vel
         self.vel += self.acc * self.game.dt
         self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
 
