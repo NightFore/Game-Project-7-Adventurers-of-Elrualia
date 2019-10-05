@@ -3,6 +3,7 @@ import os
 import pytmx
 import random
 from pygame.locals import *
+from os import path
 vec = pygame.math.Vector2
 """
     Settings
@@ -18,13 +19,13 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 
 # Player Settings
-PLAYER_IMG      = "Data\Graphics\Player_pipoya_female_13_2.png"
+PLAYER_IMG      = "Player_pipoya_female_13_2.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 PLAYER_HEALTH   = 100
 PLAYER_SPEED    = 300
 
 # Mob Settings
-MOB_IMG         = "Data\Graphics\Mobs_enemy_04_1.png"
+MOB_IMG         = "Mobs_enemy_04_1.png"
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 MOB_RADIUS      = 30
 MOB_HEALTH      = 25
@@ -33,7 +34,7 @@ MOB_DAMAGE      = 10
 MOB_KNOCKBACK   = 20
 
 # Sword Settings
-SWORD_IMG       = "Data\Graphics\Sword_PixelHole_x2.png"
+SWORD_IMG       = "Sword_PixelHole_x2.png"
 SWORD_HIT_RECT  = pygame.Rect(0, 0, 30, 30)
 SWORD_SPEED     = 50
 SWORD_DAMAGE    = 10
@@ -41,6 +42,9 @@ SWORD_KNOCKBACK = 20
 SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
+
+# Items Settings
+ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png", "items_beyonderboy_heart_2.png", "items_beyonderboy_heart_3.png", "items_beyonderboy_heart_4.png"]}
 
 # Layer Settings
 LAYER_WALL      = 1
@@ -91,6 +95,12 @@ def load_file(path, image=False):
         if image == True:
             file.append(pygame.image.load(path + os.sep + file_name).convert())
     return file
+
+def load_image(image_path, image_list):
+    images = []
+    for image in image_list:
+        images.append(pygame.image.load(path.join(image_path, image)).convert_alpha())
+    return images
 
 
 
@@ -164,20 +174,31 @@ class Game:
         self.new()
 
     def load_data(self):
-        self.map            = Map("Data\Map\Map_1.tmx")
+        game_folder         = path.dirname(__file__)
+        data_folder         = path.join(game_folder, "data")
+        map_folder          = path.join(data_folder, "Map")
+        graphics_folder     = path.join(data_folder, "graphics")
+        
+        self.map            = Map(path.join(map_folder, "Map_1.tmx"))
         self.map_img        = self.map.make_map()
         self.map_rect       = self.map_img.get_rect()
-        self.player_img     = load_tile_table(PLAYER_IMG, 32, 32)
-        self.mob_img        = load_tile_table(MOB_IMG, 32, 32)
-        self.sword_img      = pygame.image.load(SWORD_IMG).convert_alpha()
+        
+        self.player_img     = load_tile_table(path.join(graphics_folder, PLAYER_IMG), 32, 32)
+        self.mob_img        = load_tile_table(path.join(graphics_folder, MOB_IMG), 32, 32)
+        self.sword_img      = pygame.image.load(path.join(graphics_folder, SWORD_IMG)).convert_alpha()
+
+        self.item_images = {}
+        for item in ITEM_IMAGES:
+            self.item_images[item] = load_image(graphics_folder, ITEM_IMAGES[item])
 
     def new(self):
         self.draw_debug     = False
         self.camera         = Camera(self.map.width, self.map.height)
-        self.all_sprites    = pygame.sprite.Group()
+        self.all_sprites    = pygame.sprite.LayeredUpdates()
         self.mobs           = pygame.sprite.Group()
         self.sword          = pygame.sprite.Group()
         self.walls          = pygame.sprite.Group()
+        self.items          = pygame.sprite.Group()
 
         for tile_layer in self.map.tmxdata.layers:
             if tile_layer.name == "collision":
@@ -185,10 +206,13 @@ class Game:
                     Obstacle(self, x, y, self.map.tmxdata.tilewidth, self.map.tmxdata.tileheight)
 
         for tile_object in self.map.tmxdata.objects:
+            obj_center = vec(tile_object.x + tile_object.width/2, tile_object.y + tile_object.height/2)
             if tile_object.name == "player":
-                self.player = Player(self, tile_object.x, tile_object.y)
+                self.player = Player(self, obj_center.x, obj_center.y)
             if tile_object.name == "mob":
-                self.mob = Mob(self, tile_object.x, tile_object.y)
+                self.mob = Mob(self, obj_center.x, obj_center.y)
+            if tile_object.name in ["heart"]:
+                Item(self, obj_center, tile_object.name)
 
 
     def run(self):
@@ -244,7 +268,6 @@ class Game:
     
     def draw(self):
         self.gameDisplay.blit(self.map_img, self.camera.apply_rect(self.map_rect))
-        #self.draw_grid()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
             if self.draw_debug:
@@ -660,25 +683,11 @@ class Sword(pygame.sprite.Sprite):
         if pygame.time.get_ticks() - self.spawn_time > SWORD_LIFETIME:
             self.kill()
 
-    
-
-class Wall(pygame.sprite.Sprite):
-    def __init__(self, game, x ,y):
-        self.groups = game.all_sprites, game.walls
-        self._layer = LAYER_WALL
-        pygame.sprite.Sprite.__init__(self, self.groups)
-        self.image = pygame.Surface((TILESIZE, TILESIZE))
-        self.image.fill(GREEN)
-        self.rect = self.image.get_rect()
-        self.x = x
-        self.y = y
-        self.rect.x = self.x * TILESIZE
-        self.rect.y = self.y * TILESIZE
-
 
 
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, game, x, y, w, h):
+        self._layer = LAYER_WALL
         self.groups = game.walls
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -688,6 +697,54 @@ class Obstacle(pygame.sprite.Sprite):
         self.y = y
         self.rect.x = self.x * w
         self.rect.y = self.y * h
+
+
+
+class Item(pygame.sprite.Sprite):
+    def __init__(self, game, pos, type):
+        self._layer = LAYER_ITEMS
+        self.groups = game.all_sprites, game.items
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game               = game
+        self.type               = type
+        self.pos                = pos
+        
+        self.index              = 0
+        self.images             = self.game.item_images[self.type]
+        self.image              = self.images[self.index]
+    
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = self.image.get_rect()
+        self.hit_rect.center    = self.rect.center
+    
+        self.dt                 = game.dt
+        self.current_time       = 0
+        self.current_frame      = 0
+        self.animation_time     = 0.15
+        self.animation_frames   = 6
+        
+    def update_time_dependent(self):
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+    def update_frame_dependent(self):
+        self.current_frame += 1
+        if self.current_frame >= self.animation_frames:
+            self.current_frame = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+
+    def update(self):
+        self.update_time_dependent()
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+    
+
+
 
 g = Game()
 while True:
