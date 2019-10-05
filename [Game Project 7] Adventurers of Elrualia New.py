@@ -1,6 +1,7 @@
 import pygame
 import os
 import pytmx
+import random
 from pygame.locals import *
 vec = pygame.math.Vector2
 """
@@ -41,6 +42,13 @@ SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
 
+# Layer Settings
+LAYER_WALL      = 1
+LAYER_ITEMS     = 1
+LAYER_PLAYER    = 2
+LAYER_MOB       = 2
+LAYER_SWORD     = 3
+LAYER_EFFECTS   = 4
 
 """
     Colors
@@ -422,6 +430,7 @@ class Camera():
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
+        self._layer = LAYER_PLAYER
         self.groups = game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -525,6 +534,7 @@ class Player(pygame.sprite.Sprite):
 
 class Mob(pygame.sprite.Sprite):
     def __init__(self, game, x ,y):
+        self._layer = LAYER_MOB
         self.groups = game.all_sprites, game.mobs
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
@@ -582,9 +592,12 @@ class Mob(pygame.sprite.Sprite):
     def avoid_mobs(self):
         for mob in self.game.mobs:
             if mob != self:
-               dist = self.pos - mob.pos
-               if 0 < dist.length() < MOB_RADIUS:
-                   self.acc += dist.normalize()
+                dist = self.pos - mob.pos
+                if 0 < dist.length() < MOB_RADIUS:
+                    if self.acc != -dist.normalize():
+                        self.acc += dist.normalize()
+                    else:
+                        self.acc += vec(random.choice((self.acc.y, -self.acc.y)), random.choice((self.acc.x, -self.acc.x)))
         
 
     def update(self):
@@ -616,6 +629,7 @@ class Mob(pygame.sprite.Sprite):
 
 class Sword(pygame.sprite.Sprite):
     def __init__(self, game, pos, rot, side):
+        self._layer = LAYER_SWORD
         self.groups = game.all_sprites, game.sword
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game               = game
@@ -651,6 +665,7 @@ class Sword(pygame.sprite.Sprite):
 class Wall(pygame.sprite.Sprite):
     def __init__(self, game, x ,y):
         self.groups = game.all_sprites, game.walls
+        self._layer = LAYER_WALL
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.image = pygame.Surface((TILESIZE, TILESIZE))
         self.image.fill(GREEN)
