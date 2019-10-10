@@ -32,8 +32,9 @@ MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 MOB_HEALTH      = 25
 MOB_SPEED       = 125
 MOB_DAMAGE      = 10
-MOB_RADIUS      = 30
 MOB_KNOCKBACK   = 20
+MOB_RADIUS      = 30
+DETECT_RADIUS   = 400
 
 # Sword Settings
 SWORD_IMG       = "Sword_PixelHole_x2.png"
@@ -572,6 +573,7 @@ class Mob(pygame.sprite.Sprite):
         self.game = game
         self.maxhealth          = MOB_HEALTH
         self.health             = self.maxhealth
+        self.target             = game.player
     
         self.rot = 0
         self.pos = vec(x, y)
@@ -579,7 +581,7 @@ class Mob(pygame.sprite.Sprite):
         self.acc = vec(0, 0)
         
         self.index              = 0
-        self.images             = self.game.mob_img
+        self.images             = self.game.mob_img.copy()
         self.images_bottom      = self.images[0]
         self.images_left        = self.images[1]
         self.images_right       = self.images[2]
@@ -611,6 +613,8 @@ class Mob(pygame.sprite.Sprite):
             self.current_time = 0
             self.index = (self.index + 1) % len(self.images)
             self.image = self.images[self.index]
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
 
     def avoid_mobs(self):
         for mob in self.game.mobs:
@@ -626,25 +630,24 @@ class Mob(pygame.sprite.Sprite):
     def update(self):
         self.update_angle()
         self.update_time_dependent()
-        
-        self.image = pygame.transform.rotate(self.image, 0)
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos
-
-        self.rot = (self.game.player.pos - self.pos).angle_to(vec(1, 0))
-        self.acc = vec(1, 0).rotate(-self.rot)
-        self.avoid_mobs()
-        self.acc.scale_to_length(MOB_SPEED)
-        self.acc -= self.vel
-        self.vel += self.acc * self.game.dt
-        self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
-
-        self.hit_rect.centerx = self.pos.x
-        collide_with_walls(self, self.game.walls, "x")
-        self.hit_rect.centery = self.pos.y
-        collide_with_walls(self, self.game.walls, "y")
-        self.rect.center = self.hit_rect.center
     
+        target_dist = self.target.pos - self.pos
+        if target_dist.length_squared() < DETECT_RADIUS**2:
+            self.rot = target_dist.angle_to(vec(1, 0))
+            self.acc = vec(1, 0).rotate(-self.rot)
+            self.avoid_mobs()
+            self.acc.scale_to_length(MOB_SPEED)
+            self.acc -= self.vel
+            self.vel += self.acc * self.game.dt
+            self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
+
+            self.hit_rect.centerx = self.pos.x
+            collide_with_walls(self, self.game.walls, "x")
+            self.hit_rect.centery = self.pos.y
+            collide_with_walls(self, self.game.walls, "y")
+            self.rect.center = self.hit_rect.center
+    
+        self.image = pygame.transform.rotate(self.image, 0)
         draw_health(self)
         if self.health <= 0:
             self.kill()
