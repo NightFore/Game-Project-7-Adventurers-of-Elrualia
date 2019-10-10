@@ -1,10 +1,10 @@
 import pygame
 import os
 import pytmx
-import random
 import pytweening as tween
 from pygame.locals import *
 from os import path
+from random import choice, random
 vec = pygame.math.Vector2
 """
     Settings
@@ -46,10 +46,6 @@ SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
 
-# Items Settings
-ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
-HEART_AMOUNT    = 10
-
 # Tweening
 BOB_RANGE = 10
 BOB_SPEED = 0.3
@@ -61,6 +57,14 @@ LAYER_PLAYER    = 2
 LAYER_MOB       = 2
 LAYER_SWORD     = 3
 LAYER_EFFECTS   = 4
+
+# Items Settings
+ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
+HEART_AMOUNT    = 10
+
+# Sounds
+SOUNDS_SWORD    = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
+
 
 """
     Colors
@@ -184,9 +188,10 @@ class Game:
     def load_data(self):
         game_folder         = path.dirname(__file__)
         data_folder         = path.join(game_folder, "data")
-        map_folder          = path.join(data_folder, "Map")
         graphics_folder     = path.join(data_folder, "graphics")
-        
+        map_folder          = path.join(data_folder, "map")
+        sfx_folder          = path.join(data_folder, "sfx")
+                
         self.map            = Map(path.join(map_folder, "Map_1.tmx"))
         self.map_img        = self.map.make_map()
         self.map_rect       = self.map_img.get_rect()
@@ -195,10 +200,17 @@ class Game:
         self.mob_img        = load_tile_table(path.join(graphics_folder, MOB_IMG), 32, 32)
         self.sword_img      = pygame.image.load(path.join(graphics_folder, SWORD_IMG)).convert_alpha()
 
+        # Items
         self.item_images = {}
         for item in ITEM_IMAGES:
             self.item_images[item] = load_image(graphics_folder, ITEM_IMAGES[item])
 
+        # Sounds
+        self.sounds_weapon = {}
+        self.sounds_weapon["sword"] = []
+        for sound in SOUNDS_SWORD:
+            self.sounds_weapon["sword"].append(pygame.mixer.Sound(path.join(sfx_folder, sound)))
+    
     def new(self):
         self.draw_debug     = False
         self.camera         = Camera(self.map.width, self.map.height)
@@ -269,6 +281,7 @@ class Game:
             for sword in hits_2:
                 if sword.hit == False:
                     sword.hit = True
+                    choice(self.sounds_weapon["sword"]).play()
                     mobs.health -= SWORD_DAMAGE
                     mobs.pos += vec(SWORD_KNOCKBACK, 0).rotate(-sword.rot)
                     mobs.vel = vec(0, 0)
@@ -624,7 +637,7 @@ class Mob(pygame.sprite.Sprite):
                     if self.acc != -dist.normalize():
                         self.acc += dist.normalize()
                     else:
-                        self.acc += vec(random.choice((self.acc.y, -self.acc.y)), random.choice((self.acc.x, -self.acc.x)))
+                        self.acc += vec(choice((self.acc.y, -self.acc.y)), choice((self.acc.x, -self.acc.x)))
         
 
     def update(self):
