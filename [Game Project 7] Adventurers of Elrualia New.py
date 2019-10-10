@@ -2,6 +2,7 @@ import pygame
 import os
 import pytmx
 import random
+import pytweening as tween
 from pygame.locals import *
 from os import path
 vec = pygame.math.Vector2
@@ -24,13 +25,14 @@ PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 PLAYER_HEALTH   = 100
 PLAYER_SPEED    = 300
 
+
 # Mob Settings
 MOB_IMG         = "Mobs_enemy_04_1.png"
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
-MOB_RADIUS      = 30
 MOB_HEALTH      = 25
 MOB_SPEED       = 125
 MOB_DAMAGE      = 10
+MOB_RADIUS      = 30
 MOB_KNOCKBACK   = 20
 
 # Sword Settings
@@ -44,7 +46,11 @@ SWORD_RATE      = 500
 SWORD_OFFSET    = vec(20, 0)
 
 # Items Settings
-ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png", "items_beyonderboy_heart_2.png", "items_beyonderboy_heart_3.png", "items_beyonderboy_heart_4.png"]}
+ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
+
+# Tweening
+BOB_RANGE = 20
+BOB_SPEED = 0.6
 
 # Layer Settings
 LAYER_WALL      = 1
@@ -481,9 +487,7 @@ class Player(pygame.sprite.Sprite):
     
         self.dt                 = game.dt
         self.current_time       = 0
-        self.current_frame      = 0
         self.animation_time     = 0.15
-        self.animation_frames   = 6
 
         
     def get_keys(self):
@@ -523,13 +527,6 @@ class Player(pygame.sprite.Sprite):
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
             self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
-
-    def update_frame_dependent(self):
-        self.current_frame += 1
-        if self.current_frame >= self.animation_frames:
-            self.current_frame = 0
             self.index = (self.index + 1) % len(self.images)
             self.image = self.images[self.index]
 
@@ -584,9 +581,7 @@ class Mob(pygame.sprite.Sprite):
     
         self.dt                 = game.dt
         self.current_time       = 0
-        self.current_frame      = 0
         self.animation_time     = 0.15
-        self.animation_frames   = 6
 
     def update_angle(self):
         if -135 <= self.rot <= -45:
@@ -602,13 +597,6 @@ class Mob(pygame.sprite.Sprite):
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
             self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
-
-    def update_frame_dependent(self):
-        self.current_frame += 1
-        if self.current_frame >= self.animation_frames:
-            self.current_frame = 0
             self.index = (self.index + 1) % len(self.images)
             self.image = self.images[self.index]
 
@@ -709,40 +697,27 @@ class Item(pygame.sprite.Sprite):
         self.type               = type
         self.pos                = pos
         
-        self.index              = 0
-        self.images             = self.game.item_images[self.type]
-        self.image              = self.images[self.index]
+        self.image              = self.game.item_images[self.type][0]
     
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = self.image.get_rect()
         self.hit_rect.center    = self.rect.center
-    
-        self.dt                 = game.dt
-        self.current_time       = 0
-        self.current_frame      = 0
-        self.animation_time     = 0.15
-        self.animation_frames   = 6
-        
-    def update_time_dependent(self):
-        self.current_time += self.dt
-        if self.current_time >= self.animation_time:
-            self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
 
-    def update_frame_dependent(self):
-        self.current_frame += 1
-        if self.current_frame >= self.animation_frames:
-            self.current_frame = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
+        self.tween = tween.easeInOutSine
+        self.step = 0
+        self.dir = 1
+
+    def update_bobbing(self):
+        offset = BOB_RANGE * (self.tween(self.step / BOB_RANGE) - 0.5)
+        self.rect.centery = self.pos.y + offset * self.dir
+        self.step += BOB_SPEED
+        if self.step > BOB_RANGE:
+            self.step = 0
+            self.dir *= -1
 
     def update(self):
-        self.update_time_dependent()
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos
-    
+        self.update_bobbing()
 
 
 
