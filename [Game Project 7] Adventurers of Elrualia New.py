@@ -47,6 +47,7 @@ SWORD_OFFSET    = vec(20, 0)
 
 # Items Settings
 ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
+HEART_AMOUNT    = 10
 
 # Tweening
 BOB_RANGE = 10
@@ -270,6 +271,12 @@ class Game:
                     mobs.health -= SWORD_DAMAGE
                     mobs.pos += vec(SWORD_KNOCKBACK, 0).rotate(-sword.rot)
                     mobs.vel = vec(0, 0)
+
+        # Items
+        hits = pygame.sprite.spritecollide(self.player, self.items, True)
+        for hit in hits:
+            if hit.type == "heart" and self.player.health < PLAYER_HEALTH:
+                self.player.add_health(HEART_AMOUNT)
 
     
     def draw(self):
@@ -529,6 +536,11 @@ class Player(pygame.sprite.Sprite):
             self.current_time = 0
             self.index = (self.index + 1) % len(self.images)
             self.image = self.images[self.index]
+
+    def add_health(self, amount):
+        self.health += amount
+        if self.health > PLAYER_HEALTH:
+            self.health = PLAYER_HEALTH
 
     def update(self):
         self.get_keys()
