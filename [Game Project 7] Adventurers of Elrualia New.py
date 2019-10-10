@@ -49,8 +49,8 @@ SWORD_OFFSET    = vec(20, 0)
 ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
 
 # Tweening
-BOB_RANGE = 20
-BOB_SPEED = 0.6
+BOB_RANGE = 10
+BOB_SPEED = 0.3
 
 # Layer Settings
 LAYER_WALL      = 1
@@ -704,7 +704,7 @@ class Item(pygame.sprite.Sprite):
         self.hit_rect           = self.image.get_rect()
         self.hit_rect.center    = self.rect.center
 
-        self.tween = tween.easeInOutSine
+        self.tween = tween.linear
         self.step = 0
         self.dir = 1
 
