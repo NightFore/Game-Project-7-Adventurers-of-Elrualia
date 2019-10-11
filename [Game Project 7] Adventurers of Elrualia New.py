@@ -21,17 +21,18 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 # Player Settings
 PLAYER_IMG      = "Player_pipoya_female_13_2.png"
+PLAYER_HEART    = "items_beyonderboy_heart.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
-PLAYER_HEALTH   = 100
+PLAYER_HEALTH   = 10
 PLAYER_SPEED    = 300
 
 
 # Mob Settings
 MOB_IMG         = "Mobs_enemy_04_1.png"
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
-MOB_HEALTH      = 25
+MOB_HEALTH      = 3
 MOB_SPEED       = 125
-MOB_DAMAGE      = 10
+MOB_DAMAGE      = 1
 MOB_KNOCKBACK   = 20
 MOB_RADIUS      = 30
 DETECT_RADIUS   = 400
@@ -40,7 +41,7 @@ DETECT_RADIUS   = 400
 SWORD_IMG       = "Sword_PixelHole_x2.png"
 SWORD_HIT_RECT  = pygame.Rect(0, 0, 30, 30)
 SWORD_SPEED     = 50
-SWORD_DAMAGE    = 10
+SWORD_DAMAGE    = 1
 SWORD_KNOCKBACK = 20
 SWORD_LIFETIME  = 300
 SWORD_RATE      = 500
@@ -93,6 +94,20 @@ BGCOLOR     = 200, 200, 200
 """
     Helpful Functions
 """
+def draw_health(self):
+    if 100*self.health/self.maxhealth > 60:
+        color = GREEN
+    elif 100*self.health/self.maxhealth > 30:
+        color = YELLOW
+    else:
+        color = RED
+    if self.health < 0:
+        self.health = 0
+    width = int(self.rect.width * self.health/self.maxhealth)
+    pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
+
+
+    
 def load_file(path, image=False):
     """
     Load    : All texts/images in directory. The directory must only contain texts/images.
@@ -157,21 +172,6 @@ def collide_hit_rect(one, two):
 
 
 
-def draw_health(self):
-    if 100*self.health/self.maxhealth > 60:
-        color = GREEN
-    elif 100*self.health/self.maxhealth > 30:
-        color = YELLOW
-    else:
-        color = RED
-    if self.health < 0:
-        self.health = 0
-    width = int(self.rect.width * self.health/self.maxhealth)
-    pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
-        
-
-
-
 """
     Game
 """
@@ -197,6 +197,7 @@ class Game:
         self.map_rect       = self.map_img.get_rect()
         
         self.player_img     = load_tile_table(path.join(graphics_folder, PLAYER_IMG), 32, 32)
+        self.player_heart   = pygame.image.load(path.join(graphics_folder, PLAYER_HEART)).convert_alpha()
         self.mob_img        = load_tile_table(path.join(graphics_folder, MOB_IMG), 32, 32)
         self.sword_img      = pygame.image.load(path.join(graphics_folder, SWORD_IMG)).convert_alpha()
 
@@ -302,14 +303,8 @@ class Game:
         if self.draw_debug:
             for wall in self.walls:
                 pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(wall.rect), 1)
+        self.player.draw_health()
         self.gameDisplay.update()
-
-
-    def draw_grid(self):
-        for x in range(0, WIDTH, TILESIZE):
-            pygame.draw.line(self.gameDisplay, LIGHTGREY, (x, 0), (x, HEIGHT))
-        for y in range(0, HEIGHT, TILESIZE):
-            pygame.draw.line(self.gameDisplay, LIGHTGREY, (0, y), (WIDTH, y))
 
 
 
@@ -551,6 +546,10 @@ class Player(pygame.sprite.Sprite):
             self.index = (self.index + 1) % len(self.images)
             self.image = self.images[self.index]
 
+    def draw_health(self):
+        for x in range(int(self.health)):
+            self.game.gameDisplay.blit(self.game.player_heart, (10 + x*32, 5))
+
     def add_health(self, amount):
         self.health += amount
         if self.health > PLAYER_HEALTH:
@@ -572,7 +571,7 @@ class Player(pygame.sprite.Sprite):
         collide_with_walls(self, self.game.walls, "y")
         self.rect.center = self.hit_rect.center
 
-        draw_health(self)
+        self.draw_health()
         if self.health <= 0:
             self.kill()
 

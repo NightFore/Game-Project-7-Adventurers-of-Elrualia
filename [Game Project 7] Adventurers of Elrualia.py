@@ -1,72 +1,310 @@
 import pygame
 import os
-import time
-import random
-import pygame_textinput
 import pytmx
-
+import pytweening as tween
 from pygame.locals import *
-from operator import itemgetter
+from os import path
+from random import choice, random
+vec = pygame.math.Vector2
+"""
+    Settings
+"""
+# Game Settings
+project_title = "Adventurers of Elrualia"
+screen_size = WIDTH, HEIGHT = 1280, 768
+FPS = 60
+
+TILESIZE    = 32
+GRIDWIDTH   = WIDTH  / TILESIZE
+GRIDHEIGHT  = HEIGHT / TILESIZE
 
 
-############################################################
+# Player Settings
+PLAYER_IMG      = "Player_pipoya_female_13_2.png"
+PLAYER_HEART    = "items_beyonderboy_heart.png"
+PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
+PLAYER_HEALTH   = 10
+PLAYER_SPEED    = 300
+
+
+# Mob Settings
+MOB_IMG         = "Mobs_enemy_04_1.png"
+MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
+MOB_HEALTH      = 3
+MOB_SPEED       = 125
+MOB_DAMAGE      = 1
+MOB_KNOCKBACK   = 20
+MOB_RADIUS      = 30
+DETECT_RADIUS   = 400
+
+# Sword Settings
+SWORD_IMG       = "Sword_PixelHole_x2.png"
+SWORD_HIT_RECT  = pygame.Rect(0, 0, 30, 30)
+SWORD_SPEED     = 50
+SWORD_DAMAGE    = 1
+SWORD_KNOCKBACK = 20
+SWORD_LIFETIME  = 300
+SWORD_RATE      = 500
+SWORD_OFFSET    = vec(20, 0)
+
+# Tweening
+BOB_RANGE = 10
+BOB_SPEED = 0.3
+
+# Layer Settings
+LAYER_WALL      = 1
+LAYER_ITEMS     = 1
+LAYER_PLAYER    = 2
+LAYER_MOB       = 2
+LAYER_SWORD     = 3
+LAYER_EFFECTS   = 4
+
+# Items Settings
+ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
+HEART_AMOUNT    = 10
+
+# Sounds
+SOUNDS_SWORD    = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
+
+
 """
-    Main Functions
+    Colors
 """
-class Setup():
+RED         = 255, 0,   0
+
+GREEN       = 0,   255, 0
+DARKGREEN   = 60,  210, 120
+
+BLUE        = 0,   0,   255
+LIGHTBLUE   = 140, 205, 245
+
+YELLOW      = 255, 255, 0
+CYAN        = 0,  255,  255
+
+GREY        = 150, 170, 210
+LIGHTGREY   = 100, 100, 100
+
+BLACK       = 0,   0,   0
+WHITE       = 255, 255, 255
+
+BGCOLOR     = 200, 200, 200
+
+
+
+"""
+    Helpful Functions
+"""
+def draw_health(self):
+    if 100*self.health/self.maxhealth > 60:
+        color = GREEN
+    elif 100*self.health/self.maxhealth > 30:
+        color = YELLOW
+    else:
+        color = RED
+    if self.health < 0:
+        self.health = 0
+    width = int(self.rect.width * self.health/self.maxhealth)
+    pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
+
+
+    
+def load_file(path, image=False):
+    """
+    Load    : All texts/images in directory. The directory must only contain texts/images.
+    Path    : The relative or absolute path to the directory to load texts/images from.
+    Image   : Load and convert image in the direcoty path.
+    Return  : List of files.
+    """
+    file = []
+    for file_name in os.listdir(path):
+        if image == False:
+            file.append(path + os.sep + file_name)
+        if image == True:
+            file.append(pygame.image.load(path + os.sep + file_name).convert())
+    return file
+
+def load_image(image_path, image_list):
+    images = []
+    for image in image_list:
+        images.append(pygame.image.load(path.join(image_path, image)).convert_alpha())
+    return images
+
+
+
+def load_tile_table(filename, width, height, colorkey=(0,0,0)):
+    image = pygame.image.load(filename).convert()
+    image.set_colorkey(colorkey)
+    image_width, image_height = image.get_size()
+    tile_table = []
+    for tile_y in range(int(image_height/height)):
+        line = []
+        tile_table.append(line)
+        for tile_x in range(int(image_width/width)):
+            rect = (tile_x*width, tile_y*height, width, height)
+            line.append(image.subsurface(rect))
+    return tile_table
+
+
+
+def collide_with_walls(sprite, group, dir):
+    if dir == "x":
+        hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
+        if hits:
+            if hits[0].rect.centerx > sprite.hit_rect.centerx:
+                sprite.pos.x = hits[0].rect.left - sprite.hit_rect.width / 2
+            if hits[0].rect.centerx < sprite.hit_rect.centerx:
+                sprite.pos.x = hits[0].rect.right + sprite.hit_rect.width / 2
+            sprite.vel.x = 0
+            sprite.hit_rect.centerx = sprite.pos.x
+        
+    if dir == "y":
+        hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
+        if hits:
+            if hits[0].rect.centery > sprite.hit_rect.centery:
+                sprite.pos.y = hits[0].rect.top - sprite.hit_rect.height / 2
+            if hits[0].rect.centery < sprite.hit_rect.centery:
+                sprite.pos.y = hits[0].rect.bottom + sprite.hit_rect.height / 2
+            sprite.vel.y = 0
+            sprite.hit_rect.centery = sprite.pos.y
+
+def collide_hit_rect(one, two):
+    return one.hit_rect.colliderect(two.rect)
+
+
+
+"""
+    Game
+"""
+class Game:
     def __init__(self):
-        # Setup
-        self.events         = ""
-        self.background     = None
-        self.music          = None
+        pygame.init()
+        pygame.key.set_repeat(300, 75)
+        self.gameDisplay    = ScaledGame(project_title, screen_size, 60)
+        self.clock          = pygame.time.Clock()
+        self.dt             = self.clock.tick(FPS) / 1000
+        self.load_data()
+        self.new()
 
-        # State
-        self.button         = False
-        self.list_button    = []
+    def load_data(self):
+        game_folder         = path.dirname(__file__)
+        data_folder         = path.join(game_folder, "data")
+        graphics_folder     = path.join(data_folder, "graphics")
+        map_folder          = path.join(data_folder, "map")
+        sfx_folder          = path.join(data_folder, "sfx")
+                
+        self.map            = Map(path.join(map_folder, "Map_1.tmx"))
+        self.map_img        = self.map.make_map()
+        self.map_rect       = self.map_img.get_rect()
         
-        self.text           = False
-        self.list_text      = []
+        self.player_img     = load_tile_table(path.join(graphics_folder, PLAYER_IMG), 32, 32)
+        self.player_heart   = pygame.image.load(path.join(graphics_folder, PLAYER_HEART)).convert_alpha()
+        self.mob_img        = load_tile_table(path.join(graphics_folder, MOB_IMG), 32, 32)
+        self.sword_img      = pygame.image.load(path.join(graphics_folder, SWORD_IMG)).convert_alpha()
+
+        # Items
+        self.item_images = {}
+        for item in ITEM_IMAGES:
+            self.item_images[item] = load_image(graphics_folder, ITEM_IMAGES[item])
+
+        # Sounds
+        self.sounds_weapon = {}
+        self.sounds_weapon["sword"] = []
+        for sound in SOUNDS_SWORD:
+            self.sounds_weapon["sword"].append(pygame.mixer.Sound(path.join(sfx_folder, sound)))
+    
+    def new(self):
+        self.draw_debug     = False
+        self.camera         = Camera(self.map.width, self.map.height)
+        self.all_sprites    = pygame.sprite.LayeredUpdates()
+        self.mobs           = pygame.sprite.Group()
+        self.sword          = pygame.sprite.Group()
+        self.walls          = pygame.sprite.Group()
+        self.items          = pygame.sprite.Group()
+
+        for tile_layer in self.map.tmxdata.layers:
+            if tile_layer.name == "collision":
+                for x, y, image in tile_layer.tiles():
+                    Obstacle(self, x, y, self.map.tmxdata.tilewidth, self.map.tmxdata.tileheight)
+
+        for tile_object in self.map.tmxdata.objects:
+            obj_center = vec(tile_object.x + tile_object.width/2, tile_object.y + tile_object.height/2)
+            if tile_object.name == "player":
+                self.player = Player(self, obj_center.x, obj_center.y)
+            if tile_object.name == "mob":
+                self.mob = Mob(self, obj_center.x, obj_center.y)
+            if tile_object.name in ["heart"]:
+                Item(self, obj_center, tile_object.name)
 
 
-    def update_init(self, background=None, music=None, button=False, text=False):
-        self.background = background
-        self.update_music(music)
-
-        self.button         = button
-        self.list_button    = []
-        
-        self.text           = text
-        self.list_text      = []
-
-
-    def update_music(self, music):
-        if self.music != music and music != None:
-            self.music = music
-            pygame.mixer.music.load(music)
-            pygame.mixer.music.play(-1)
+    def run(self):
+        self.playing = True
+        while self.playing:
+            self.dt = self.clock.tick(FPS) / 1000
+            self.events()
+            self.update()
+            self.draw()
             
 
-    def update_1(self):
-        if self.background != None:
-            if isinstance(self.background, tuple) == True:
-                gameDisplay.fill(self.background)
-            else:
-                gameDisplay.blit(self.background, (0,0))
-        
-        self.events = pygame.event.get()
+    def quit_game(self):
+        pygame.quit()
+        quit()
 
 
-    def update_2(self):
-        # Button
-        if self.button == True:
-            for index in self.list_button:
-                index.update()
+    def events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.quit_game()
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.quit_game()
+                if event.key == pygame.K_h:
+                    self.draw_debug = not self.draw_debug
 
-        # Text
-        if self.text == True:
-            for index in self.list_text:
-                index.update()
-Setup = Setup()
+
+    def update(self):
+        self.all_sprites.update()
+        self.camera.update(self.player)
+
+        # Player
+        hits = pygame.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
+        for hit in hits:
+            self.player.health -= MOB_DAMAGE
+            self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
+            hit.vel = vec(0, 0)
+            if self.player.health <= 0:
+                self.playing = False
+
+        # Sword
+        hits_1 = pygame.sprite.groupcollide(self.mobs, self.sword, False, False, collide_hit_rect)
+        hits_2 = pygame.sprite.groupcollide(self.sword, self.mobs, False, False, collide_hit_rect)
+        for mobs in hits_1:
+            for sword in hits_2:
+                if sword.hit == False:
+                    sword.hit = True
+                    choice(self.sounds_weapon["sword"]).play()
+                    mobs.health -= SWORD_DAMAGE
+                    mobs.pos += vec(SWORD_KNOCKBACK, 0).rotate(-sword.rot)
+                    mobs.vel = vec(0, 0)
+
+        # Items
+        hits = pygame.sprite.spritecollide(self.player, self.items, True)
+        for hit in hits:
+            if hit.type == "heart" and self.player.health < PLAYER_HEALTH:
+                self.player.add_health(HEART_AMOUNT)
+
+    
+    def draw(self):
+        self.gameDisplay.blit(self.map_img, self.camera.apply_rect(self.map_rect))
+        for sprite in self.all_sprites:
+            self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
+            if self.draw_debug:
+                pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(sprite.hit_rect), 1)
+        if self.draw_debug:
+            for wall in self.walls:
+                pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(wall.rect), 1)
+        self.player.draw_health()
+        self.gameDisplay.update()
 
 
 
@@ -86,9 +324,7 @@ class ScaledGame(pygame.Surface):
     factor_w        = 1
     factor_h        = 1
 
-    def __init__(self, title, game_size, first_screen=False):
-        pygame.init()
-
+    def __init__(self, title, game_size, FPS, first_screen=False):
         # Title
         self.title = title
         pygame.display.set_caption(self.title)
@@ -109,6 +345,7 @@ class ScaledGame(pygame.Surface):
         pygame.Surface.__init__(self, self.game_size)
 
         # Game Settings
+        self.FPS = FPS
         self.clock = pygame.time.Clock()
 
     
@@ -146,7 +383,7 @@ class ScaledGame(pygame.Surface):
 
         #Updates screen properly
         win_size_done = False # Changes to True if the window size is got by the VIDEORESIZE event below
-        for event in Setup.events:
+        for event in pygame.event.get():
             if event.type == VIDEORESIZE:
                 ss = [event.w, event.h]
                 self.resize = True
@@ -186,656 +423,332 @@ class ScaledGame(pygame.Surface):
         self.screen.blit(pygame.transform.scale(self, self.game_scaled), self.game_gap)
         
         pygame.display.flip()
-        self.clock.tick(60)
+        self.clock.tick(self.FPS)
 
 
 
-class Button():
-    def __init__(self, text, pos, sound, display, variable, action=None):
-        """
-        Setup    : Add button to list_button
-        Sound    : sound_action, sound_active
-        Position : center, x, y, width, height, border width, border
-        Text     : text, font
-        Display  : Active/Inactive button display depending of the mouse position
-        Action   : variable, action
-        """
-        # Setup
-        Setup.button = True
-        Setup.list_button.append(self)
+class Map():
+    def __init__(self, filename):
+        self.tmxdata    = pytmx.load_pygame(filename, pixelalpha=True)
+        self.width      = self.tmxdata.width  * self.tmxdata.tilewidth
+        self.height     = self.tmxdata.height * self.tmxdata.tileheight
 
-        # Text
-        self.text, self.font = text[0], text[1]
-
-        # Position
-        self.center     = pos[0]
-        self.x          = pos[1]
-        self.y          = pos[2]
-        if len(pos) > 3:
-            self.w      = pos[3]
-            self.h      = pos[4]
-            self.b      = pos[5]
-            self.border = pos[6]
-
-        # Sound Effect
-        self.sound_action   = sound[0]
-        self.sound_active   = sound[1]
-        self.sound_state    = False
-
-        # Button
-        if isinstance(display[0], tuple) == True or display[0] is None:
-            self.inactive   = display[0]
-            self.active     = display[1]
-            self.display    = self.inactive
-
-            # Center
-            if self.center == True:
-                self.x  = self.x - self.w/2
-                self.y  = self.y - self.h/2
-            self.rect   = pygame.Rect(self.x, self.y, self.w, self.h)
-
-        # Button Image
-        elif isinstance(display[0], pygame.Surface) == True:
-            self.inactive   = display[0].convert()
-            self.active     = display[1].convert()
-            self.display    = self.inactive
-
-            # Center
-            if self.center == False:
-                self.rect = self.display.get_rect(topleft=(self.x, self.y))
-            elif self.center == True:
-                self.rect = self.display.get_rect(center=(self.x, self.y))
-        
-        # Action
-        self.variable   = variable
-        self.action     = action
-
-        # Scale
-        self.factor_w       = 1
-        self.factor_h       = 1
-        self.x_scaled       = self.rect[0]
-        self.y_scaled       = self.rect[1]
-        self.w_scaled       = self.rect[2]
-        self.h_scaled       = self.rect[3]
-        self.rect_scaled    = self.rect
-
-
-    def update_scale(self):
-        if self.factor_w != gameDisplay.factor_w or self.factor_h != gameDisplay.factor_h:
-            self.factor_w    = gameDisplay.factor_w
-            self.factor_h    = gameDisplay.factor_h
-            self.x_scaled    = self.rect[0] * self.factor_w
-            self.y_scaled    = self.rect[1] * self.factor_h
-            self.w_scaled    = self.rect[2] * self.factor_w
-            self.h_scaled    = self.rect[3] * self.factor_h
-            self.rect_scaled = pygame.Rect(self.x_scaled, self.y_scaled, self.w_scaled, self.h_scaled)
-
-
-    def update(self):
-        # Button
-        if isinstance(self.display, tuple) == True:
-            pygame.draw.rect(gameDisplay, self.display, self.rect)
-            if self.border == True:
-                pygame.draw.rect(gameDisplay, color_black, self.rect, self.b)
-
-        # Button Image
-        elif isinstance(self.display, pygame.Surface) == True:
-            gameDisplay.blit(self.display, self.rect)
-        
-        # Text
-        if self.text != None or self.font != None:
-            font, color     = self.font()
-            textSurf        = font.render(self.text, True, color)
-            textRect        = textSurf.get_rect()
-            textRect.center = (self.x + self.w/2), (self.y + self.h/2)
-            gameDisplay.blit(textSurf, textRect)
-
-        # Event
-        for event in Setup.events:
-            mouse = pygame.mouse.get_pos()
-            self.update_scale()
-
-            if self.rect_scaled.collidepoint(mouse):
-                self.display = self.active
-
-                if self.sound_active != None and self.sound_state == False:
-                    pygame.mixer.Sound.play(self.sound_active)
-                    self.sound_state = True
-
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.action != None:
-                    if self.sound_action != None:
-                        pygame.mixer.Sound.play(self.sound_action)
-
-                    if self.variable != None:
-                        self.action(self.variable)
-                    else:
-                        self.action() 
-            else:
-                self.display     = self.inactive
-                self.sound_state = False
-
-
-
-class Text():
-    def __init__(self, text, pos, hollow=False, outline=False, stroke=0, setup=False):
-        """
-        Text     : text, font
-        Position : center, x ,y
-        Hollow   : Create a hollow text surface
-        Outline  : Create a surface around the text
-        Setup    : Add text to the list_text
-        """
-        # Text
-        self.text               = text[0]
-        self.font, self.color   = text[1]()
-
-        # Position
-        self.center = pos[0]
-        self.x      = pos[1]
-        self.y      = pos[2]
-        self.textSurface = self.font.render(self.text, True, self.color)
-    
-        # Center
-        if self.center == False:
-            self.textRect        = (self.x, self.y)
-            
-        elif self.center == True:
-            self.textRect        = self.textSurface.get_rect()
-            self.textRect.center = (self.x, self.y)
-
-        # Hollow/Outline
-        self.hollow     = hollow
-        self.outline    = outline
-        self.stroke     = stroke
-
-        if isinstance(self.outline, tuple) == True:
-            self.textSurface = self.textOutline(self.font, self.text, self.color, self.outline, self.stroke)
-
-        elif hollow == True:
-            self.textSurface = self.textHollow(self.font, self.text, self.color, self.stroke)
-        
-        # Setup
-        if setup == True:
-            Setup.text = True
-            Setup.list_text.append(self)
-            
-        elif setup == False:
-            gameDisplay.blit(self.textSurface, self.textRect)
-
-
-    def textHollow(self, font, message, fontcolor, stroke):
-        notcolor = [c^0xFF for c in fontcolor]
-        base     = font.render(message, 0, fontcolor, notcolor)
-        size     = base.get_width() + stroke, base.get_height() + stroke
-        img      = pygame.Surface(size, 16)
-        img.fill(notcolor)
-        base.set_colorkey(0)
-
-        for a in range(-stroke, 3+stroke):
-            for b in range(-stroke, 3+stroke):
-                img.blit(base, (a, b))
-
-        base.set_colorkey(0)
-        base.set_palette_at(1, notcolor)
-        img.blit(base, (1, 1))
-        img.set_colorkey(notcolor)
-        return img
-
-    def textOutline(self, font, message, fontcolor, outlinecolor, stroke):
-        base    = font.render(message, 0, fontcolor)
-        outline = self.textHollow(font, message, outlinecolor, stroke)
-        img     = pygame.Surface(outline.get_size(), 16)
-        img.blit(base, (1, 1))
-        img.blit(outline, (0, 0))
-        img.set_colorkey(0)
-        return img
-            
-    def update(self):
-        gameDisplay.blit(self.textSurface, self.textRect)
-
-
-
-def text_title():
-    font = pygame.font.SysFont(None, 100)
-    color = color_button
-    return font, color
-
-def Text_Button():
-    font = pygame.font.SysFont(None, 40)
-    color = color_blue
-    return font, color
-
-def text_interface():
-    font = pygame.font.SysFont(None, 35)
-    color = color_black
-    return font, color
-
-def text_interface_2():
-    font = pygame.font.SysFont(None, 30)
-    color = color_black
-    return font, color
-
-
-
-############################################################
-
-
-"""
-    Tools Functions
-"""
-def quit_game():
-    pygame.quit()
-    quit()
-
-
-def file_len(file):
-    with open(file) as f:
-        for i, l in enumerate(f):
-            pass
-    return i + 1
-
-
-def load_file(path, image=False):
-    """
-    Load    : All texts/images in directory. The directory must only contain texts/images.
-    Path    : The relative or absolute path to the directory to load texts/images from.
-    Image   : Load and convert image in the direcoty path.
-    Return  : List of files.
-    """
-    file = []
-    for file_name in os.listdir(path):
-        if image == False:
-            file.append(path + os.sep + file_name)
-        if image == True:
-            file.append(pygame.image.load(path + os.sep + file_name).convert())
-    return file
-
-                  
-def transparent_image(image, x, y, opacity, screen):
-    image = image.convert_alpha()
-    alpha_surface = pygame.Surface(image.get_size(), pygame.SRCALPHA)
-    alpha_surface.fill((255, 255, 255, opacity))
-    image.blit(alpha_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
-    return screen.blit(image, (x, y))
-
-
-class Text_Input():
-    def __init__(self, pos):
-        # Text Input
-        self.textinput  = pygame_textinput.TextInput()
-        self.input_line = self.textinput.get_text()
-        
-        # Input box position
-        self.input_center   = pos[0]
-        self.input_x        = pos[1]
-        self.input_y        = pos[2]
-        self.input_width    = pos[3]
-        self.input_height   = pos[4]
-        self.input_border   = pos[5]
-    
-        if self.input_center == True:
-            self.input_x = self.input_x - self.input_width/2
-            self.input_y = self.input_y - self.input_height/2
-
-    def update(self):
-        if self.textinput.update(Setup.events):
-            """
-            Input_Line  : Text entered by the keyboard
-            Textinput   : Text Surface
-            """
-            self.input_line = self.textinput.get_text()
-            self.textinput  = pygame_textinput.TextInput()
-        
-            if self.input_line != "":
-                return self.input_line
-
-        self.update_display()
-
-    def update_display(self):
-        """
-         : Cutscene's User Interface
-        Text        : Character's Dialogue
-        Input Box   : Display Input Field & Text Entered
-        """
-        pygame.draw.rect(gameDisplay, color_grey,   [self.input_x, self.input_y, self.input_width, self.input_height])
-        pygame.draw.rect(gameDisplay, color_black,  [self.input_x, self.input_y, self.input_width, self.input_height], self.input_border)
-
-        # Text Center
-        rect    = self.textinput.get_surface()
-        text_w  = rect.get_width()//2
-        text_h  = rect.get_height()//2
-        box_w   = self.input_x + self.input_width/2
-        box_h   = self.input_y + self.input_height/2
-        size    = (box_w-text_w, box_h-text_h)
-        gameDisplay.blit(self.textinput.get_surface(), size)
-
-
-def load_tile_table(filename, width, height, colorkey=(0,0,0)):
-    image = pygame.image.load(filename).convert()
-    image.set_colorkey(colorkey)
-    image_width, image_height = image.get_size()
-    tile_table = []
-    for tile_x in range(int(image_width/width)):
-        line = []
-        tile_table.append(line)
-        for tile_y in range(int(image_height/height)):
-            rect = (tile_x*width, tile_y*height, width, height)
-            line.append(image.subsurface(rect))
-    return tile_table
-
-
-
-############################################################
-"""
-    Settings
-"""
-# Title
-project_title = "Adventurers of Elrualia"
-
-
-# Screen Size
-Screen_size = display_width, display_height = 1280, 768
-gameDisplay = ScaledGame(project_title, Screen_size)
-
-
-"""
-    Ressources
-"""
-# Colors
-color_red           = 255, 20,  0
-color_green         = 60,  210, 120
-color_blue          = 0,   160, 230
-color_grey          = 150, 170, 210
-color_white         = 255, 255, 255
-color_black         = 1,   0,   0
-
-color_button        = 140, 205, 245
-color_title_screen  = 30,  30,  30
-
-############################################################
-"""
-    Game Functions
-"""
-def Main_Screen():
-    MainIG.title_update(True)
-
-    gameExit = False
-    while not gameExit:
-        gameDisplay.update()
-        Setup.update_1()
-        MainIG.update()
-        Setup.update_2()
-    
-        for event in Setup.events:    
-            if event.type == pygame.QUIT:
-                quit_game()
-
-
-class Tile(pygame.sprite.Sprite):
-    def __init__(self, x, y, width, height, image):
-        pygame.sprite.Sprite.__init__(self)
-        self.rect = pygame.Rect(x*width, y*height, width, height)
-        self.image = image
-    
-    
-class SpriteIG(pygame.sprite.Sprite):
-    def __init__(self, color, width, height):
-        super().__init__()
-        self.image = pygame.Surface([width, height])
-        self.image.fill(color)
-        self.rect = self.image.get_rect()
-
-
-class TiledMap():
-    def __init__(self):
-        self.current_map    = 0
-        self.list_map       = []
-        for Map in load_file("Data\Map"):
-            if "Map" and ".tmx" in Map:
-                self.list_map.append(pytmx.load_pygame(Map, pixelalpha=True))
-
-        self.tmxdata        = self.list_map[self.current_map]
-        self.tile_width     = self.tmxdata.tilewidth
-        self.tile_height    = self.tmxdata.tileheight
-        self.map_width      = self.tmxdata.width  * self.tile_width
-        self.map_height     = self.tmxdata.height * self.tile_height
-
-    def load_map(self, index=None):
-        if index != None:
-            self.current_map    = index
-
-        self.tmxdata        = self.list_map[self.current_map]
-        self.tile_width     = self.tmxdata.tilewidth
-        self.tile_height    = self.tmxdata.tileheight
-        self.map_width      = self.tmxdata.width  * self.tile_width
-        self.map_height     = self.tmxdata.height * self.tile_height
-
-    def tile_layer(self, name):
-        for tile_layer in self.tmxdata.layers:
-            if tile_layer.name == name:
-                return tile_layer
-
-    def tile_object(self, name):
-        for tile_object in self.tmxdata.objects:
-            if tile_object.name == name:
-                return tile_object
-
-    def make_map(self):
-        temp_surface = pygame.Surface((self.map_width, self.map_height))
-        self.render(temp_surface)
-        return temp_surface
-
-    def render(self, surface=None):
-        if surface == None:
-            surface = self.make_map()
-        
+    def render(self, surface):
         ti = self.tmxdata.get_tile_image_by_gid
         for layer in self.tmxdata.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
                 for x, y, gid in layer:
                     tile = ti(gid)
                     if tile:
-                        gameDisplay.blit(tile, (x * self.tile_width, y * self.tile_height))
-TiledMap = TiledMap()
+                        surface.blit(tile, (x * self.tmxdata.tilewidth, y * self.tmxdata.tileheight))
+
+    def make_map(self):
+        temp_surface = pygame.Surface((self.width, self.height))
+        self.render(temp_surface)
+        return temp_surface
 
 
 
-class MainIG():
-    def __init__(self):
-        # Setup
-        self.background     = pygame.image.load("Data\Graphics\Background.png").convert()
-        self.list_music     = load_file("Data\Music")
+class Camera():
+    def __init__(self, width, height):
+        self.camera = pygame.Rect(0, 0, width, height)
+        self.width  = width
+        self.height = height
+    def apply(self, entity):
+        return entity.rect.move(self.camera.topleft)
 
-        # State
-        self.title          = False
-        self.gallery        = False
-        self.main           = False
+    def apply_rect(self, rect):
+        return rect.move(self.camera.topleft)
 
-        # Tile
-        self.tile_width     = TiledMap.tile_width
-        self.tile_height    = TiledMap.tile_height
-        self.tile_obstacle  = pygame.sprite.Group()
+    def update(self, target):
+        x = -target.rect.centerx + int(WIDTH  / 2)
+        y = -target.rect.centery + int(HEIGHT / 2)
 
-        # Sprite
-        self.list_sprite    = pygame.sprite.Group()
-        self.player         = SpriteIG((0,0,0), self.tile_width, self.tile_height)
-        self.player.rect.x  = 11 * self.tile_width
-        self.player.rect.y  = 19 * self.tile_height
-        self.list_sprite.add(self.player)
-
-        self.base_speed     = [6, 10]
-        self.cursor_speed   = self.base_speed[0]
-        self.cursor_slide   = self.base_speed[1]
-        self.cursor_hold    = 0
-        
-        self.velocity_x = 0
-        self.velocity_y = 0
+        # Limit to map size
+        x = min(0, x)                           # Left
+        x = max(-(self.width-WIDTH), x)         # Right
+        y = min(0, y)                           # Top
+        y = max(-(self.height-HEIGHT), y)       # Bottom
+        self.camera = pygame.Rect(x, y, self.width, self.height)
     
+
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, game, x, y):
+        self._layer = LAYER_PLAYER
+        self.groups = game.all_sprites
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.maxhealth          = PLAYER_HEALTH
+        self.health             = self.maxhealth
+        self.side               = 0
+        self.last_slash         = 0
         
-    def update(self):
-        if self.title == True:
-            self.title_update()
-            
-        elif self.main == True:
-            self.main_update()
-
-
-    def update_init(self, music=None, title=False, gallery=False, main=False):
-        Setup.update_init(self.background, music)
-        self.title      = title
-        self.gallery    = gallery
-        self.main       = main
-        
-
-
-    def title_update(self, init=False):
-        if init == True:
-            # Setup
-            self.update_init(title=True)
-
-            # Main
-            Text((project_title, text_title), (True, display_width/2, display_height/4), True, color_black, 3, setup=True)
-            Button(("Start", text_interface), (True, 1*display_width/4, 3*display_height/4, 150, 50, 5, True), (None, None), (color_green, color_red), True, self.main_update)
-            Button(("Music", text_interface), (True, 2*display_width/4, 3*display_height/4, 150, 50, 5, True), (None, None), (color_green, color_red), None, self.gallery_update)
-            Button(("Exit",  text_interface), (True, 3*display_width/4, 3*display_height/4, 150, 50, 5, True), (None, None), (color_green, color_red), None, quit_game)
-        
-
-    def gallery_update(self, init=False):
-        if init == True:
-            # Setup
-            self.update_init(gallery=True, music=self.list_music[0])
-
-            # Main         
-            Text(("Music Gallery", text_title), (True, display_width/2, display_height/12), True, color_black, 3, setup=True)
-            Button(("Return", text_interface), (True, 740, 570, 100, 40, 1, True), (None, None), (color_button, color_red), True, self.title_update)
-
-            index = 0
-            for row in range(round(0.5+len(self.list_music)/5)):
-                for col in range(5):
-                    if index < len(self.list_music):
-                        Button(("Music %i" % (index+1), Text_Button),
-                               (False, display_width/64 + display_width/5*col, display_height/6 + display_height/9*row, display_width/6, display_height/12, 4, True),
-                               (None, None), (color_green, color_red), self.list_music[index], Setup.update_music)
-                        index += 1
-
-
-    def main_update(self, init=False):
-        if init == True:
-            # Setup
-            self.update_init(main=True)
-            self.map_update(0)
-
-        elif init == False:
-            TiledMap.render()
-            self.movement()
-            self.list_sprite.draw(gameDisplay)
-
-
-    def map_update(self, index):
-        TiledMap.load_map(index)
+        self.rot                = 0
+        self.pos                = vec(x, y)
+        self.vel                = vec(0, 0)
     
-        self.tile_obstacle  = pygame.sprite.Group()
-        for x, y, image in TiledMap.tile_layer("collision").tiles():
-            self.tile_obstacle.add(Tile(x, y, self.tile_width, self.tile_height, image))
+        self.index              = 0
+        self.images             = self.game.player_img
+        self.images_bottom      = self.images[0]
+        self.images_left        = self.images[1]
+        self.images_right       = self.images[2]
+        self.images_top         = self.images[3]
+        self.images             = self.images_bottom
+        self.image              = self.images_bottom[self.index]
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = PLAYER_HIT_RECT
+        self.hit_rect.center    = self.rect.center
+    
+        self.dt                 = game.dt
+        self.current_time       = 0
+        self.animation_time     = 0.15
 
-
-        for tile_object in TiledMap.tmxdata.objects:
-            if tile_object.name == "player":
-                self.player.rect.x = tile_object.x
-                self.player.rect.y = tile_object.y
-
-    def event_update(self, index):
-        for tile_object in TiledMap.tmxdata.objects:
-            if tile_object.name == "Transition":
-                pass
-            
-    def movement(self):
+        
+    def get_keys(self):
+        self.vel = vec(0, 0)
         keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.vel.x = -PLAYER_SPEED
+            self.images = self.images_left
+            self.side = 0
+            self.rot = 180
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.vel.x = +PLAYER_SPEED
+            self.images = self.images_right
+            self.side = 1
+            self.rot = 0
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.vel.y = -PLAYER_SPEED
+            self.images = self.images_top
+            self.side = 2
+            self.rot = 90
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.vel.y = +PLAYER_SPEED
+            self.images = self.images_bottom
+            self.side = 3
+            self.rot = -90
+        if self.vel.x != 0 and self.vel.y != 0:
+            self.vel *= 0.7071
 
-        # Speed
-        if self.cursor_hold < (self.tile_width+self.tile_height)/self.cursor_speed:
-            self.cursor_speed = self.base_speed[0]
-        else:
-            self.cursor_speed = self.base_speed[1]
-
-        # Hold
-        if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT] or keys[pygame.K_UP] or keys[pygame.K_DOWN]:
-            self.cursor_hold += 1
-        else:
-            self.cursor_hold = 0
-
-        # Velocity
-        if keys[pygame.K_LEFT]:
-            self.velocity_x = -self.cursor_speed
-        elif keys[pygame.K_RIGHT]:
-            self.velocity_x = +self.cursor_speed            
-        if keys[pygame.K_UP]:
-            self.velocity_y = -self.cursor_speed
-        elif keys[pygame.K_DOWN]:
-            self.velocity_y = +self.cursor_speed
-
-
-        # X movement
-        if (keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]):
-            self.player.rect.x += self.velocity_x
+        if keys[pygame.K_SPACE]:
+            now = pygame.time.get_ticks()
+            if now - self.last_slash > SWORD_RATE:
+                self.last_slash = now
+                pos = self.pos + SWORD_OFFSET.rotate(-self.rot)
+                Sword(self.game, pos, self.rot, self.side)
             
-        elif self.player.rect.x % self.tile_width != 0:
-            if self.velocity_x > 0:
-                if self.player.rect.x % self.tile_width > self.tile_width - self.cursor_slide:
-                    self.player.rect.x += self.tile_width - self.player.rect.x % self.tile_width
-                else:
-                    self.player.rect.x += self.cursor_slide
-            else:
-                if self.player.rect.x % self.tile_width < self.cursor_slide:
-                    self.player.rect.x -= self.player.rect.x % self.tile_width
-                else:
-                    self.player.rect.x -= self.cursor_slide
+    def update_time_dependent(self):
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
 
-        # X collision
-        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.x < 0 or self.player.rect.x+self.player.rect.width > display_width:
-            self.player.rect.x -= self.velocity_x
+    def draw_health(self):
+        for x in range(int(self.health)):
+            self.game.gameDisplay.blit(self.game.player_heart, (10 + x*32, 5))
 
-            if self.player.rect.x % self.tile_width != 0:
-                if self.velocity_x > 0:
-                    self.player.rect.x += self.tile_width - self.player.rect.x % self.tile_width
-                else:
-                    self.player.rect.x -= self.player.rect.x % self.tile_width
+    def add_health(self, amount):
+        self.health += amount
+        if self.health > PLAYER_HEALTH:
+            self.health = PLAYER_HEALTH
 
+    def update(self):
+        self.get_keys()
+        self.update_time_dependent()
+        
+        self.image = pygame.transform.rotate(self.image, 0)
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+        
+        self.pos += self.vel * self.game.dt
+        
+        self.hit_rect.centerx = self.pos.x
+        collide_with_walls(self, self.game.walls, "x")
+        self.hit_rect.centery = self.pos.y
+        collide_with_walls(self, self.game.walls, "y")
+        self.rect.center = self.hit_rect.center
 
-        # Y movement
-        if (keys[pygame.K_UP] or keys[pygame.K_DOWN]):
-            self.player.rect.y += self.velocity_y
-            
-        elif self.player.rect.y % self.tile_height != 0:
-            if self.velocity_y > 0:
-                if self.player.rect.y % self.tile_height > self.tile_height - self.cursor_slide:
-                    self.player.rect.y += self.tile_height - self.player.rect.y % self.tile_height
-                else:
-                    self.player.rect.y += self.cursor_slide
-            else:
-                if self.player.rect.y % self.tile_height < self.cursor_slide:
-                    self.player.rect.y -= self.player.rect.y % self.tile_height
-                else:
-                    self.player.rect.y -= self.cursor_slide
-
-        # Y collision
-        if pygame.sprite.spritecollideany(self.player, self.tile_obstacle) or self.player.rect.y < 0 or self.player.rect.y+self.player.rect.height > display_height:
-            self.player.rect.y -= self.velocity_y
-
-            if self.player.rect.y % self.tile_height != 0:
-                if self.velocity_y > 0:
-                    self.player.rect.y += self.tile_height - self.player.rect.y % self.tile_height
-                else:
-                    self.player.rect.y -= self.player.rect.y % self.tile_height
-
-        # Grid
-        for col in range(display_width//self.tile_width):
-            for row in range(display_height//self.tile_height):
-                pygame.draw.rect(gameDisplay, (0, 0, 0), (self.tile_width*col, self.tile_height*row, self.tile_width, self.tile_height), 1)
-                
+        self.draw_health()
+        if self.health <= 0:
+            self.kill()
 
 
-MainIG = MainIG()
+
+class Mob(pygame.sprite.Sprite):
+    def __init__(self, game, x ,y):
+        self._layer = LAYER_MOB
+        self.groups = game.all_sprites, game.mobs
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.maxhealth          = MOB_HEALTH
+        self.health             = self.maxhealth
+        self.target             = game.player
+    
+        self.rot = 0
+        self.pos = vec(x, y)
+        self.vel = vec(0, 0)
+        self.acc = vec(0, 0)
+        
+        self.index              = 0
+        self.images             = self.game.mob_img.copy()
+        self.images_bottom      = self.images[0]
+        self.images_left        = self.images[1]
+        self.images_right       = self.images[2]
+        self.images_top         = self.images[3]
+        self.images             = self.images_bottom
+        self.image              = self.images_bottom[self.index]
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = MOB_HIT_RECT.copy()
+        self.hit_rect.center    = self.rect.center
+    
+        self.dt                 = game.dt
+        self.current_time       = 0
+        self.animation_time     = 0.15
+
+    def update_angle(self):
+        if -135 <= self.rot <= -45:
+            self.images = self.images_bottom
+        if -180 <= self.rot <= -135 or 135 <=  self.rot <= 180:
+            self.images = self.images_left
+        if -0 <= self.rot <= 45 or -45 <=  self.rot <= 0:
+            self.images = self.images_right
+        if 45 <=  self.rot <= 135:
+            self.images = self.images_top
+        
+    def update_time_dependent(self):
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+
+    def avoid_mobs(self):
+        for mob in self.game.mobs:
+            if mob != self:
+                dist = self.pos - mob.pos
+                if 0 < dist.length() < MOB_RADIUS:
+                    if self.acc != -dist.normalize():
+                        self.acc += dist.normalize()
+                    else:
+                        self.acc += vec(choice((self.acc.y, -self.acc.y)), choice((self.acc.x, -self.acc.x)))
+        
+
+    def update(self):
+        self.update_angle()
+        self.update_time_dependent()
+    
+        target_dist = self.target.pos - self.pos
+        if target_dist.length_squared() < DETECT_RADIUS**2:
+            self.rot = target_dist.angle_to(vec(1, 0))
+            self.acc = vec(1, 0).rotate(-self.rot)
+            self.avoid_mobs()
+            self.acc.scale_to_length(MOB_SPEED)
+            self.acc -= self.vel
+            self.vel += self.acc * self.game.dt
+            self.pos += self.vel * self.game.dt + 0.5 * self.acc * self.game.dt ** 2
+
+            self.hit_rect.centerx = self.pos.x
+            collide_with_walls(self, self.game.walls, "x")
+            self.hit_rect.centery = self.pos.y
+            collide_with_walls(self, self.game.walls, "y")
+            self.rect.center = self.hit_rect.center
+    
+        self.image = pygame.transform.rotate(self.image, 0)
+        draw_health(self)
+        if self.health <= 0:
+            self.kill()
 
 
-Main_Screen()
+class Sword(pygame.sprite.Sprite):
+    def __init__(self, game, pos, rot, side):
+        self._layer = LAYER_SWORD
+        self.groups = game.all_sprites, game.sword
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game               = game
+        self.hit                = False
+        self.spawn_time         = pygame.time.get_ticks()
+    
+        self.rot                = rot
+        self.pos                = vec(pos)
+        self.vel                = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
+    
+        self.image              = self.game.sword_img
+        self.image_bottom       = pygame.transform.rotate(self.image, +180)
+        self.image_left         = pygame.transform.rotate(self.image, +90)
+        self.image_right        = pygame.transform.rotate(self.image, -90)
+        self.image_top          = pygame.transform.rotate(self.image, 0)
+        self.image_list         = [self.image_left, self.image_right, self.image_top, self.image_bottom]
+        self.image              = self.image_list[side]
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = SWORD_HIT_RECT
+        self.hit_rect.center    = self.rect.center
+
+    def update(self):
+        self.pos += self.vel * self.game.dt
+        self.rect.center = self.pos
+        self.hit_rect.centerx = self.pos.x
+        self.hit_rect.centery = self.pos.y
+        if pygame.time.get_ticks() - self.spawn_time > SWORD_LIFETIME:
+            self.kill()
+
+
+
+class Obstacle(pygame.sprite.Sprite):
+    def __init__(self, game, x, y, w, h):
+        self._layer = LAYER_WALL
+        self.groups = game.walls
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game = game
+        self.rect = pygame.Rect(x, y, w, h)
+        self.hit_rect = self.rect
+        self.x = x
+        self.y = y
+        self.rect.x = self.x * w
+        self.rect.y = self.y * h
+
+
+
+class Item(pygame.sprite.Sprite):
+    def __init__(self, game, pos, type):
+        self._layer = LAYER_ITEMS
+        self.groups = game.all_sprites, game.items
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game               = game
+        self.type               = type
+        self.pos                = pos
+        
+        self.image              = self.game.item_images[self.type][0]
+    
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = self.image.get_rect()
+        self.hit_rect.center    = self.rect.center
+
+        self.tween = tween.linear
+        self.step = 0
+        self.dir = 1
+
+    def update_bobbing(self):
+        offset = BOB_RANGE * (self.tween(self.step / BOB_RANGE) - 0.5)
+        self.rect.centery = self.pos.y + offset * self.dir
+        self.step += BOB_SPEED
+        if self.step > BOB_RANGE:
+            self.step = 0
+            self.dir *= -1
+
+    def update(self):
+        self.update_bobbing()
+
+
+
+g = Game()
+while True:
+    g.new()
+    g.run()
