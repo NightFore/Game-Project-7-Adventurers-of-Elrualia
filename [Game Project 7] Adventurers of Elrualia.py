@@ -35,7 +35,7 @@ MOB_SPEED       = 125
 MOB_DAMAGE      = 1
 MOB_KNOCKBACK   = 20
 MOB_RADIUS      = 30
-DETECT_RADIUS   = 400
+DETECT_RADIUS   = 300
 
 # Sword Settings
 SWORD_IMG       = "Sword_PixelHole_x2.png"
@@ -59,9 +59,12 @@ LAYER_MOB       = 2
 LAYER_SWORD     = 3
 LAYER_EFFECTS   = 4
 
-# Items Settings
+# Items
 ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
 HEART_AMOUNT    = 1
+
+# Effects
+EFFECT_IMAGES   = {"pick_up": ["effect_beyonderboy_pick_up_item_1.png", "effect_beyonderboy_pick_up_item_2.png", "effect_beyonderboy_pick_up_item_3.png", "effect_beyonderboy_pick_up_item_4.png", "effect_beyonderboy_pick_up_item_5.png", "effect_beyonderboy_pick_up_item_6.png"]}
 
 # Sounds
 VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"] 
@@ -179,6 +182,8 @@ def collide_hit_rect(one, two):
 """
 class Game:
     def __init__(self):
+        pygame.mixer.pre_init(44100, -16, 2, 2048)
+        pygame.mixer.init()
         pygame.init()
         pygame.key.set_repeat(300, 75)
         self.gameDisplay    = ScaledGame(project_title, screen_size, 60)
@@ -208,6 +213,11 @@ class Game:
         for item in ITEM_IMAGES:
             self.item_images[item] = load_image(graphics_folder, ITEM_IMAGES[item])
 
+        # Effects
+        self.effect_images = {}
+        for effect in EFFECT_IMAGES:
+            self.effect_images[effect] = load_image(graphics_folder, EFFECT_IMAGES[effect])
+
         # Sounds
         self.sounds_weapon = {}
         self.sounds_weapon["sword"] = []
@@ -230,6 +240,7 @@ class Game:
         self.sword          = pygame.sprite.Group()
         self.walls          = pygame.sprite.Group()
         self.items          = pygame.sprite.Group()
+        self.effects        = pygame.sprite.Group()
 
         for tile_layer in self.map.tmxdata.layers:
             if tile_layer.name == "collision":
@@ -301,6 +312,7 @@ class Game:
         # Items
         hits = pygame.sprite.spritecollide(self.player, self.items, True)
         for hit in hits:
+            Effect(self, hit.pos, "pick_up")
             if hit.type == "heart" and self.player.health < PLAYER_HEALTH:
                 self.player.add_health(HEART_AMOUNT)
 
@@ -392,7 +404,7 @@ class ScaledGame(pygame.Surface):
         if self.fps == True:
             pygame.display.set_caption(self.title + " - " + str(int(self.clock.get_fps())) + "fps")
 
-        #Updates screen properly
+        # Updates screen properly
         win_size_done = False # Changes to True if the window size is got by the VIDEORESIZE event below
         for event in pygame.event.get():
             if event.type == VIDEORESIZE:
@@ -757,6 +769,46 @@ class Item(pygame.sprite.Sprite):
 
     def update(self):
         self.update_bobbing()
+
+
+
+
+class Effect(pygame.sprite.Sprite):
+    def __init__(self, game, pos, type):
+        self._layer = LAYER_EFFECTS
+        self.groups = game.all_sprites, game.effects
+        pygame.sprite.Sprite.__init__(self, self.groups)
+        self.game               = game
+        self.type               = type
+        self.pos                = pos
+        
+        self.index              = 0
+        self.images             = self.game.effect_images[self.type]
+        self.image              = self.images[self.index]
+    
+        self.rect               = self.image.get_rect()
+        self.rect.center        = self.pos
+        self.hit_rect           = self.image.get_rect()
+        self.hit_rect.center    = self.rect.center
+    
+        self.dt                 = game.dt
+        self.current_time       = 0
+        self.animation_time     = 0.10
+        
+    def update_time_dependent(self):
+        self.current_time += self.dt
+        if self.current_time >= self.animation_time:
+            self.current_time = 0
+            self.index = (self.index + 1) % len(self.images)
+            self.image = self.images[self.index]
+        self.rect = self.image.get_rect()
+        self.rect.center = self.pos
+
+    def update(self):
+        self.update_time_dependent()
+        
+        if (self.index + 1) % len(self.images) == 0:
+            self.kill()
 
 
 
