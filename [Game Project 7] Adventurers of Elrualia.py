@@ -11,7 +11,7 @@ vec = pygame.math.Vector2
 """
 # Game Settings
 project_title = "Adventurers of Elrualia"
-screen_size = WIDTH, HEIGHT = 1280, 768
+screen_size = WIDTH, HEIGHT = 800, 600
 FPS = 60
 
 TILESIZE    = 32
@@ -20,17 +20,17 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 
 # Player Settings
-PLAYER_IMG      = "Player_pipoya_female_13_2.png"
+PLAYER_IMG      = "character_pipoya_male_01_2.png"
 PLAYER_HEART    = "items_beyonderboy_heart.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
-PLAYER_HEALTH   = 10
+PLAYER_HEALTH   = 3
 PLAYER_SPEED    = 300
 
 
 # Mob Settings
 MOB_IMG         = "Mobs_enemy_04_1.png"
 MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
-MOB_HEALTH      = 3
+MOB_HEALTH      = 2
 MOB_SPEED       = 125
 MOB_DAMAGE      = 1
 MOB_KNOCKBACK   = 20
@@ -61,10 +61,12 @@ LAYER_EFFECTS   = 4
 
 # Items Settings
 ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
-HEART_AMOUNT    = 10
+HEART_AMOUNT    = 1
 
 # Sounds
-SOUNDS_SWORD    = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
+VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"] 
+VOICE_PLAYER_DAMAGE = ["voice_wingless_seraph_jakigan_14_damage.wav", "voice_wingless_seraph_jakigan_15_damage.wav", "voice_wingless_seraph_jakigan_16_damage.wav"]
+SOUNDS_SWORD_ATTACK  = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
 
 
 """
@@ -209,8 +211,16 @@ class Game:
         # Sounds
         self.sounds_weapon = {}
         self.sounds_weapon["sword"] = []
-        for sound in SOUNDS_SWORD:
+        for sound in SOUNDS_SWORD_ATTACK:
             self.sounds_weapon["sword"].append(pygame.mixer.Sound(path.join(sfx_folder, sound)))
+
+        self.sounds_voice = {}
+        self.sounds_voice["player_attack"] = []
+        self.sounds_voice["player_damage"] = []
+        for voice in VOICE_PLAYER_ATTACK:
+            self.sounds_voice["player_attack"].append(pygame.mixer.Sound(path.join(sfx_folder, voice)))
+        for voice in VOICE_PLAYER_DAMAGE:
+            self.sounds_voice["player_damage"].append(pygame.mixer.Sound(path.join(sfx_folder, voice)))
     
     def new(self):
         self.draw_debug     = False
@@ -269,6 +279,7 @@ class Game:
         # Player
         hits = pygame.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
         for hit in hits:
+            choice(self.sounds_voice["player_damage"]).play()
             self.player.health -= MOB_DAMAGE
             self.player.pos += vec(MOB_KNOCKBACK, 0).rotate(-hits[0].rot)
             hit.vel = vec(0, 0)
@@ -419,7 +430,7 @@ class ScaledGame(pygame.Surface):
             self.factor_h = self.game_scaled[1] / self.get_height()
             self.ss = ss
 
-        # Add game to screen with the scaled size and gap required.                
+        # Add game to screen with the scaled size and gap required.      
         self.screen.blit(pygame.transform.scale(self, self.game_scaled), self.game_gap)
         
         pygame.display.flip()
@@ -537,6 +548,7 @@ class Player(pygame.sprite.Sprite):
             if now - self.last_slash > SWORD_RATE:
                 self.last_slash = now
                 pos = self.pos + SWORD_OFFSET.rotate(-self.rot)
+                choice(self.game.sounds_voice["player_attack"]).play()
                 Sword(self.game, pos, self.rot, self.side)
             
     def update_time_dependent(self):
