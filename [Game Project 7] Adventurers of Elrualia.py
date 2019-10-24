@@ -21,6 +21,7 @@ GRIDHEIGHT  = HEIGHT / TILESIZE
 
 # Player Settings
 PLAYER_IMG      = "character_pipoya_male_01_2.png"
+PLAYER_INDEX    = 1
 PLAYER_HEART    = "items_beyonderboy_heart.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 PLAYER_HEALTH   = 3
@@ -517,8 +518,9 @@ class Player(pygame.sprite.Sprite):
         self.rot                = 0
         self.pos                = vec(x, y)
         self.vel                = vec(0, 0)
-    
-        self.index              = 0
+
+        self.base_index         = 1
+        self.index              = self.base_index
         self.images             = self.game.player_img
         self.images_bottom      = self.images[0]
         self.images_left        = self.images[1]
@@ -557,10 +559,8 @@ class Player(pygame.sprite.Sprite):
             self.rot = -90
         if self.vel.x != 0 and self.vel.y != 0:
             self.vel *= 0.7071
-        if self.vel.x != 0 or self.vel.y != 0:
-            self.moving = True
-        else:
-            self.moving = False
+        
+        self.moving = (self.vel.x != 0 or self.vel.y != 0)
 
         if keys[pygame.K_SPACE]:
             if pygame.time.get_ticks() - self.last_slash >= SWORD_RATE:
@@ -569,14 +569,12 @@ class Player(pygame.sprite.Sprite):
     def update_time_dependent(self):
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
-            if self.moving == True:
+            if self.moving == True or self.index != self.base_index:
                 self.current_time = 0
                 self.index = (self.index + 1) % len(self.images)
-                self.image = self.images[self.index]
             else:
-                self.current_time = 0
-                self.index = 1
-                self.image = self.images[self.index]
+                self.index = self.base_index
+            self.image = self.images[self.index]
 
     def draw_health(self):
         for x in range(int(self.health)):
