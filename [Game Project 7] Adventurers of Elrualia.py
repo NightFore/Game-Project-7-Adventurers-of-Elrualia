@@ -66,10 +66,12 @@ HEART_AMOUNT    = 1
 # Effects
 EFFECT_IMAGES   = {"pick_up": ["effect_beyonderboy_pick_up_item_1.png", "effect_beyonderboy_pick_up_item_2.png", "effect_beyonderboy_pick_up_item_3.png", "effect_beyonderboy_pick_up_item_4.png", "effect_beyonderboy_pick_up_item_5.png", "effect_beyonderboy_pick_up_item_6.png"]}
 
+
 # Sounds
+BG_MUSIC            = "music_aaron_krogh_310_world_map.mp3"
 VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"] 
 VOICE_PLAYER_DAMAGE = ["voice_wingless_seraph_jakigan_14_damage.wav", "voice_wingless_seraph_jakigan_15_damage.wav", "voice_wingless_seraph_jakigan_16_damage.wav"]
-SOUNDS_SWORD_ATTACK  = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
+SOUNDS_SWORD_ATTACK = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
 
 
 """
@@ -198,6 +200,7 @@ class Game:
         graphics_folder     = path.join(data_folder, "graphics")
         map_folder          = path.join(data_folder, "map")
         sfx_folder          = path.join(data_folder, "sfx")
+        music_folder        = path.join(data_folder, "music")
                 
         self.map            = Map(path.join(map_folder, "Map_1.tmx"))
         self.map_img        = self.map.make_map()
@@ -231,7 +234,10 @@ class Game:
             self.sounds_voice["player_attack"].append(pygame.mixer.Sound(path.join(sfx_folder, voice)))
         for voice in VOICE_PLAYER_DAMAGE:
             self.sounds_voice["player_damage"].append(pygame.mixer.Sound(path.join(sfx_folder, voice)))
-    
+
+        # Music
+        pygame.mixer.music.load(path.join(music_folder, BG_MUSIC))
+
     def new(self):
         self.draw_debug     = False
         self.camera         = Camera(self.map.width, self.map.height)
@@ -259,6 +265,7 @@ class Game:
 
     def run(self):
         self.playing = True
+        pygame.mixer.music.play(-1)
         while self.playing:
             self.dt = self.clock.tick(FPS) / 1000
             self.events()
@@ -506,6 +513,7 @@ class Player(pygame.sprite.Sprite):
         self.health             = self.maxhealth
         self.side               = 0
         self.last_slash         = 0
+        self.moving             = False
         
         self.rot                = 0
         self.pos                = vec(x, y)
@@ -554,6 +562,10 @@ class Player(pygame.sprite.Sprite):
             self.rot = -90
         if self.vel.x != 0 and self.vel.y != 0:
             self.vel *= 0.7071
+        if self.vel.x != 0 or self.vel.y != 0:
+            self.moving = True
+        else:
+            self.moving = False
 
         if keys[pygame.K_SPACE]:
             now = pygame.time.get_ticks()
@@ -566,9 +578,14 @@ class Player(pygame.sprite.Sprite):
     def update_time_dependent(self):
         self.current_time += self.dt
         if self.current_time >= self.animation_time:
-            self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
+            if self.moving == True:
+                self.current_time = 0
+                self.index = (self.index + 1) % len(self.images)
+                self.image = self.images[self.index]
+            else:
+                self.current_time = 0
+                self.index = 1
+                self.image = self.images[self.index]
 
     def draw_health(self):
         for x in range(int(self.health)):
