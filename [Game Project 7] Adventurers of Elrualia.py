@@ -33,7 +33,7 @@ MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 MOB_HEALTH      = 2
 MOB_SPEED       = 125
 MOB_DAMAGE      = 1
-MOB_KNOCKBACK   = 20
+MOB_KNOCKBACK   = 30
 MOB_RADIUS      = 30
 DETECT_RADIUS   = 300
 
@@ -511,7 +511,6 @@ class Player(pygame.sprite.Sprite):
         self.game = game
         self.maxhealth          = PLAYER_HEALTH
         self.health             = self.maxhealth
-        self.side               = 0
         self.last_slash         = 0
         self.moving             = False
         
@@ -543,22 +542,18 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vel.x = -PLAYER_SPEED
             self.images = self.images_left
-            self.side = 0
             self.rot = 180
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.vel.x = +PLAYER_SPEED
             self.images = self.images_right
-            self.side = 1
             self.rot = 0
         if keys[pygame.K_UP] or keys[pygame.K_w]:
             self.vel.y = -PLAYER_SPEED
             self.images = self.images_top
-            self.side = 2
             self.rot = 90
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             self.vel.y = +PLAYER_SPEED
             self.images = self.images_bottom
-            self.side = 3
             self.rot = -90
         if self.vel.x != 0 and self.vel.y != 0:
             self.vel *= 0.7071
@@ -568,12 +563,8 @@ class Player(pygame.sprite.Sprite):
             self.moving = False
 
         if keys[pygame.K_SPACE]:
-            now = pygame.time.get_ticks()
-            if now - self.last_slash > SWORD_RATE:
-                self.last_slash = now
-                pos = self.pos + SWORD_OFFSET.rotate(-self.rot)
-                choice(self.game.sounds_voice["player_attack"]).play()
-                Sword(self.game, pos, self.rot, self.side)
+            if pygame.time.get_ticks() - self.last_slash >= SWORD_RATE:
+                Sword(self.game, self)
             
     def update_time_dependent(self):
         self.current_time += self.dt
@@ -678,7 +669,6 @@ class Mob(pygame.sprite.Sprite):
                         self.acc += dist.normalize()
                     else:
                         self.acc += vec(choice((self.acc.y, -self.acc.y)), choice((self.acc.x, -self.acc.x)))
-        
 
     def update(self):
         self.update_angle()
@@ -707,32 +697,31 @@ class Mob(pygame.sprite.Sprite):
 
 
 class Sword(pygame.sprite.Sprite):
-    def __init__(self, game, pos, rot, side):
+    def __init__(self, game, character):
         self._layer = LAYER_SWORD
         self.groups = game.all_sprites, game.sword
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game               = game
-        self.hit                = False
-        self.spawn_time         = pygame.time.get_ticks()
-    
-        self.rot                = rot
-        self.pos                = vec(pos)
+        self.character          = character
+
+        self.rot                = self.character.rot
+        self.pos                = vec(self.character.pos + SWORD_OFFSET.rotate(-self.rot))
         self.vel                = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
-    
-        self.image              = self.game.sword_img
-        self.image_bottom       = pygame.transform.rotate(self.image, +180)
-        self.image_left         = pygame.transform.rotate(self.image, +90)
-        self.image_right        = pygame.transform.rotate(self.image, -90)
-        self.image_top          = pygame.transform.rotate(self.image, 0)
-        self.image_list         = [self.image_left, self.image_right, self.image_top, self.image_bottom]
-        self.image              = self.image_list[side]
+        
+        self.image              = pygame.transform.rotate(self.game.sword_img, self.rot-90)
+
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = SWORD_HIT_RECT
         self.hit_rect.center    = self.rect.center
 
+        self.hit                    = False
+        self.spawn_time             = pygame.time.get_ticks()    
+        self.character.last_slash   = self.spawn_time
+        choice(self.game.sounds_voice["player_attack"]).play()
+
     def update(self):
-        self.pos += self.vel * self.game.dt
+        self.pos += self.vel * self.game.dt + self.character.vel * self.character.dt
         self.rect.center = self.pos
         self.hit_rect.centerx = self.pos.x
         self.hit_rect.centery = self.pos.y
