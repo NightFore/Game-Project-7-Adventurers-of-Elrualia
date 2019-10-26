@@ -34,7 +34,7 @@ MOB_HIT_RECT    = pygame.Rect(0, 0, 30, 30)
 MOB_HEALTH      = 2
 MOB_SPEED       = 125
 MOB_DAMAGE      = 1
-MOB_KNOCKBACK   = 30
+MOB_KNOCKBACK   = 20
 MOB_RADIUS      = 30
 DETECT_RADIUS   = 300
 
@@ -62,6 +62,7 @@ LAYER_EFFECTS   = 4
 
 # Items
 ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
+ITEM_DROPS      = ["heart"]
 HEART_AMOUNT    = 1
 
 # Effects
@@ -70,10 +71,12 @@ EFFECT_IMAGES   = {"pick_up": ["effect_beyonderboy_pick_up_item_1.png", "effect_
 
 # Sounds
 BG_MUSIC            = "music_aaron_krogh_310_world_map.mp3"
-VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"] 
-VOICE_PLAYER_DAMAGE = ["voice_wingless_seraph_jakigan_14_damage.wav", "voice_wingless_seraph_jakigan_15_damage.wav", "voice_wingless_seraph_jakigan_16_damage.wav"]
+
+SOUNDS_PICK_UP      = "sfx_maoudamashii_system23.wav"
 SOUNDS_SWORD_ATTACK = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
 
+VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"] 
+VOICE_PLAYER_DAMAGE = ["voice_wingless_seraph_jakigan_14_damage.wav", "voice_wingless_seraph_jakigan_15_damage.wav", "voice_wingless_seraph_jakigan_16_damage.wav"]
 
 """
     Colors
@@ -201,6 +204,7 @@ class Game:
         graphics_folder     = path.join(data_folder, "graphics")
         map_folder          = path.join(data_folder, "map")
         sfx_folder          = path.join(data_folder, "sfx")
+        voice_folder        = path.join(data_folder, "voice")
         music_folder        = path.join(data_folder, "music")
                 
         self.map            = Map(path.join(map_folder, "Map_1.tmx"))
@@ -212,32 +216,35 @@ class Game:
         self.mob_img        = load_tile_table(path.join(graphics_folder, MOB_IMG), 32, 32)
         self.sword_img      = pygame.image.load(path.join(graphics_folder, SWORD_IMG)).convert_alpha()
 
-        # Items
+        # Image Items
         self.item_images = {}
         for item in ITEM_IMAGES:
             self.item_images[item] = load_image(graphics_folder, ITEM_IMAGES[item])
 
-        # Effects
+        # Image Effects
         self.effect_images = {}
         for effect in EFFECT_IMAGES:
             self.effect_images[effect] = load_image(graphics_folder, EFFECT_IMAGES[effect])
 
-        # Sounds
-        self.sounds_weapon = {}
-        self.sounds_weapon["sword"] = []
+        # Sound Effects
+        self.sounds_effects = {}
+        self.sounds_effects["pick_up"]  = pygame.mixer.Sound(path.join(sfx_folder, SOUNDS_PICK_UP))
+        self.sounds_effects["sword"]    = []
         for sound in SOUNDS_SWORD_ATTACK:
-            self.sounds_weapon["sword"].append(pygame.mixer.Sound(path.join(sfx_folder, sound)))
+            self.sounds_effects["sword"].append(pygame.mixer.Sound(path.join(sfx_folder, sound)))
 
+        # Sound Voices
         self.sounds_voice = {}
         self.sounds_voice["player_attack"] = []
         self.sounds_voice["player_damage"] = []
         for voice in VOICE_PLAYER_ATTACK:
-            self.sounds_voice["player_attack"].append(pygame.mixer.Sound(path.join(sfx_folder, voice)))
+            self.sounds_voice["player_attack"].append(pygame.mixer.Sound(path.join(voice_folder, voice)))
         for voice in VOICE_PLAYER_DAMAGE:
-            self.sounds_voice["player_damage"].append(pygame.mixer.Sound(path.join(sfx_folder, voice)))
+            self.sounds_voice["player_damage"].append(pygame.mixer.Sound(path.join(voice_folder, voice)))
 
-        # Music
+        # Sound Musics
         pygame.mixer.music.load(path.join(music_folder, BG_MUSIC))
+
 
     def new(self):
         self.draw_debug     = False
@@ -249,11 +256,13 @@ class Game:
         self.items          = pygame.sprite.Group()
         self.effects        = pygame.sprite.Group()
 
+        # Map Obstacles
         for tile_layer in self.map.tmxdata.layers:
             if tile_layer.name == "collision":
                 for x, y, image in tile_layer.tiles():
                     Obstacle(self, x, y, self.map.tmxdata.tilewidth, self.map.tmxdata.tileheight)
 
+        # Map Objects
         for tile_object in self.map.tmxdata.objects:
             obj_center = vec(tile_object.x + tile_object.width/2, tile_object.y + tile_object.height/2)
             if tile_object.name == "player":
@@ -295,7 +304,7 @@ class Game:
         self.all_sprites.update()
         self.camera.update(self.player)
 
-        # Player
+        # Player => Mobs
         hits = pygame.sprite.spritecollide(self.player, self.mobs, False, collide_hit_rect)
         for hit in hits:
             choice(self.sounds_voice["player_damage"]).play()
@@ -305,24 +314,25 @@ class Game:
             if self.player.health <= 0:
                 self.playing = False
 
-        # Sword
+        # Player => Items
+        hits = pygame.sprite.spritecollide(self.player, self.items, True)
+        for hit in hits:
+            Effect(self, hit.pos, "pick_up")
+            self.sounds_effects["pick_up"].play()
+            if hit.type == "heart" and self.player.health < PLAYER_HEALTH:
+                self.player.add_health(HEART_AMOUNT)
+
+        # Sword => Mobs
         hits_1 = pygame.sprite.groupcollide(self.mobs, self.sword, False, False, collide_hit_rect)
         hits_2 = pygame.sprite.groupcollide(self.sword, self.mobs, False, False, collide_hit_rect)
         for mobs in hits_1:
             for sword in hits_2:
                 if sword.hit == False:
                     sword.hit = True
-                    choice(self.sounds_weapon["sword"]).play()
+                    choice(self.sounds_effects["sword"]).play()
                     mobs.health -= SWORD_DAMAGE
                     mobs.pos += vec(SWORD_KNOCKBACK, 0).rotate(-sword.rot)
                     mobs.vel = vec(0, 0)
-
-        # Items
-        hits = pygame.sprite.spritecollide(self.player, self.items, True)
-        for hit in hits:
-            Effect(self, hit.pos, "pick_up")
-            if hit.type == "heart" and self.player.health < PLAYER_HEALTH:
-                self.player.add_health(HEART_AMOUNT)
 
     
     def draw(self):
@@ -691,6 +701,7 @@ class Mob(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.image, 0)
         draw_health(self)
         if self.health <= 0:
+            Item(self.game, self.pos, choice(ITEM_DROPS))
             self.kill()
 
 
