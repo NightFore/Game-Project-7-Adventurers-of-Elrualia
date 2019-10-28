@@ -6,6 +6,7 @@ from pygame.locals import *
 from os import path
 from random import choice, random
 vec = pygame.math.Vector2
+
 """
     Settings
 """
@@ -18,15 +19,12 @@ TILESIZE    = 32
 GRIDWIDTH   = WIDTH  / TILESIZE
 GRIDHEIGHT  = HEIGHT / TILESIZE
 
-
 # Player Settings
 PLAYER_IMG      = "character_pipoya_male_01_2.png"
 PLAYER_INDEX    = 1
-PLAYER_HEART    = "items_beyonderboy_heart.png"
 PLAYER_HIT_RECT = pygame.Rect(0, 0, 35, 35)
 PLAYER_HEALTH   = 3
 PLAYER_SPEED    = 300
-
 
 # Mob Settings
 MOB_IMG         = "Mobs_enemy_04_1.png"
@@ -61,8 +59,12 @@ LAYER_SWORD     = 3
 LAYER_EFFECTS   = 4
 
 # Items
-ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"]}
-ITEM_DROPS      = ["heart"]
+ITEM_IMAGES     = {"heart": ["items_beyonderboy_heart_1.png"], "coin": ["items_beyonderboy_coin_1.png", "items_beyonderboy_coin_2.png", "items_beyonderboy_coin_3.png", "items_beyonderboy_coin_4.png", "items_beyonderboy_coin_5.png", "items_beyonderboy_coin_6.png", ]}
+ITEM_DROPS      = ["heart", "coin"]
+
+IMAGE_HEART     = "items_beyonderboy_heart.png"
+IMAGE_COIN      = "items_beyonderboy_coin.png"
+
 HEART_AMOUNT    = 1
 
 # Effects
@@ -100,11 +102,19 @@ WHITE       = 255, 255, 255
 
 BGCOLOR     = 200, 200, 200
 
+COLOR_INTERFACE = 140, 205, 245
+
 
 
 """
     Helpful Functions
 """
+def text_interface():
+    font = pygame.font.SysFont(None, 32)
+    color = WHITE
+    return font, color
+
+    
 def draw_health(self):
     if 100*self.health/self.maxhealth > 60:
         color = GREEN
@@ -212,7 +222,8 @@ class Game:
         self.map_rect       = self.map_img.get_rect()
         
         self.player_img     = load_tile_table(path.join(graphics_folder, PLAYER_IMG), 32, 32)
-        self.player_heart   = pygame.image.load(path.join(graphics_folder, PLAYER_HEART)).convert_alpha()
+        self.image_heart    = pygame.image.load(path.join(graphics_folder, IMAGE_HEART)).convert_alpha()
+        self.image_coin     = pygame.image.load(path.join(graphics_folder, IMAGE_COIN)).convert_alpha()
         self.mob_img        = load_tile_table(path.join(graphics_folder, MOB_IMG), 32, 32)
         self.sword_img      = pygame.image.load(path.join(graphics_folder, SWORD_IMG)).convert_alpha()
 
@@ -319,8 +330,10 @@ class Game:
         for hit in hits:
             Effect(self, hit.pos, "pick_up")
             self.sounds_effects["pick_up"].play()
-            if hit.type == "heart" and self.player.health < PLAYER_HEALTH:
+            if hit.type == "heart":
                 self.player.add_health(HEART_AMOUNT)
+            if hit.type == "coin":
+                self.player.coin += 1
 
         # Sword => Mobs
         hits_1 = pygame.sprite.groupcollide(self.mobs, self.sword, False, False, collide_hit_rect)
@@ -345,6 +358,7 @@ class Game:
             for wall in self.walls:
                 pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(wall.rect), 1)
         self.player.draw_health()
+        self.player.draw_coin()
         self.gameDisplay.update()
 
 
@@ -389,7 +403,7 @@ class ScaledGame(pygame.Surface):
         self.FPS = FPS
         self.clock = pygame.time.Clock()
 
-    
+ 
     def get_resolution(self, ss, gs): 
         gap = float(gs[0]) / float(gs[1]) # Game aspect ratio
         sap = float(ss[0]) / float(ss[1]) # Scaled aspect ratio
@@ -468,6 +482,74 @@ class ScaledGame(pygame.Surface):
 
 
 
+class Text():
+    def __init__(self, text, pos, hollow=False, outline=False, stroke=0):
+        """
+        Text     : text, font
+        Position : center, x ,y
+        Hollow   : Create a hollow text surface
+        Outline  : Create a surface around the text
+        """
+        # Text
+        self.display            = text[0]
+        self.text               = str(text[1])
+        self.font, self.color   = text[2]()
+
+        # Position
+        self.center = pos[0]
+        self.x      = pos[1]
+        self.y      = pos[2]
+        self.textSurface = self.font.render(self.text, True, self.color)
+    
+        # Center
+        if self.center == False:
+            self.textRect        = (self.x, self.y)
+            
+        elif self.center == True:
+            self.textRect        = self.textSurface.get_rect()
+            self.textRect.center = (self.x, self.y)
+
+        # Hollow/Outline
+        self.hollow     = hollow
+        self.outline    = outline
+        self.stroke     = stroke
+
+        if isinstance(self.outline, tuple) == True:
+            self.textSurface = self.textOutline(self.font, self.text, self.color, self.outline, self.stroke)
+
+        elif hollow == True:
+            self.textSurface = self.textHollow(self.font, self.text, self.color, self.stroke)
+        
+        self.display.blit(self.textSurface, self.textRect)
+
+
+    def textHollow(self, font, message, fontcolor, stroke):
+        notcolor = [c^0xFF for c in fontcolor]
+        base     = font.render(message, 0, fontcolor, notcolor)
+        size     = base.get_width() + stroke, base.get_height() + stroke
+        img      = pygame.Surface(size, 16)
+        img.fill(notcolor)
+        base.set_colorkey(0)
+        for a in range(-stroke, 3+stroke):
+            for b in range(-stroke, 3+stroke):
+                img.blit(base, (a, b))
+        base.set_colorkey(0)
+        base.set_palette_at(1, notcolor)
+        img.blit(base, (1, 1))
+        img.set_colorkey(notcolor)
+        return img
+
+    def textOutline(self, font, message, fontcolor, outlinecolor, stroke):
+        base    = font.render(message, 0, fontcolor)
+        outline = self.textHollow(font, message, outlinecolor, stroke)
+        img     = pygame.Surface(outline.get_size(), 16)
+        img.blit(base, (1, 1))
+        img.blit(outline, (0, 0))
+        img.set_colorkey(0)
+        return img
+    
+
+
 class Map():
     def __init__(self, filename):
         self.tmxdata    = pytmx.load_pygame(filename, pixelalpha=True)
@@ -520,10 +602,12 @@ class Player(pygame.sprite.Sprite):
         self.groups = game.all_sprites
         pygame.sprite.Sprite.__init__(self, self.groups)
         self.game = game
-        self.maxhealth          = PLAYER_HEALTH
-        self.health             = self.maxhealth
         self.last_slash         = 0
         self.moving             = False
+        
+        self.maxhealth          = PLAYER_HEALTH
+        self.health             = self.maxhealth
+        self.coin               = 0
         
         self.rot                = 0
         self.pos                = vec(x, y)
@@ -547,7 +631,7 @@ class Player(pygame.sprite.Sprite):
         self.current_time       = 0
         self.animation_time     = 0.15
 
-        
+ 
     def get_keys(self):
         self.vel = vec(0, 0)
         keys = pygame.key.get_pressed()
@@ -588,12 +672,17 @@ class Player(pygame.sprite.Sprite):
 
     def draw_health(self):
         for x in range(int(self.health)):
-            self.game.gameDisplay.blit(self.game.player_heart, (10 + x*32, 5))
+            self.game.gameDisplay.blit(self.game.image_heart, (10 + x*32, 5))
 
+    def draw_coin(self):
+        self.game.gameDisplay.blit(self.game.image_coin, (10, 40))
+        Text((self.game.gameDisplay, self.coin, text_interface), (False, 52, 46))
+        
     def add_health(self, amount):
-        self.health += amount
-        if self.health > PLAYER_HEALTH:
-            self.health = PLAYER_HEALTH
+        if self.health < PLAYER_HEALTH:
+            self.health += amount
+            if self.health > PLAYER_HEALTH:
+                self.health = PLAYER_HEALTH
 
     def update(self):
         self.get_keys()
@@ -611,7 +700,6 @@ class Player(pygame.sprite.Sprite):
         collide_with_walls(self, self.game.walls, "y")
         self.rect.center = self.hit_rect.center
 
-        self.draw_health()
         if self.health <= 0:
             self.kill()
 
