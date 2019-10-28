@@ -109,12 +109,6 @@ COLOR_INTERFACE = 140, 205, 245
 """
     Helpful Functions
 """
-def text_interface():
-    font = pygame.font.SysFont(None, 32)
-    color = WHITE
-    return font, color
-
-    
 def draw_health(self):
     if 100*self.health/self.maxhealth > 60:
         color = GREEN
@@ -128,7 +122,25 @@ def draw_health(self):
     pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
 
 
-    
+
+def update_time_dependent(sprite):
+    sprite.current_time += sprite.dt
+    if sprite.current_time >= sprite.animation_time:
+        sprite.current_time = 0
+        sprite.index = (sprite.index + 1) % len(sprite.images)
+        sprite.image = sprite.images[sprite.index]
+    sprite.rect = sprite.image.get_rect()
+    sprite.rect.center = sprite.pos
+
+
+
+def text_interface():
+    font = pygame.font.SysFont(None, 32)
+    color = WHITE
+    return font, color
+
+
+
 def load_file(path, image=False):
     """
     Load    : All texts/images in directory. The directory must only contain texts/images.
@@ -512,42 +524,42 @@ class Text():
         # Hollow/Outline
         self.hollow     = hollow
         self.outline    = outline
-        self.stroke     = stroke
 
         if isinstance(self.outline, tuple) == True:
-            self.textSurface = self.textOutline(self.font, self.text, self.color, self.outline, self.stroke)
+            self.textSurface = self.textOutline(self.font, self.text, self.color, self.outline)
 
         elif hollow == True:
-            self.textSurface = self.textHollow(self.font, self.text, self.color, self.stroke)
+            self.textSurface = self.textHollow(self.font, self.text, self.color)
         
         self.display.blit(self.textSurface, self.textRect)
 
-
-    def textHollow(self, font, message, fontcolor, stroke):
+    def textHollow(self, font, message, fontcolor):
         notcolor = [c^0xFF for c in fontcolor]
-        base     = font.render(message, 0, fontcolor, notcolor)
-        size     = base.get_width() + stroke, base.get_height() + stroke
-        img      = pygame.Surface(size, 16)
+        base = font.render(message, 0, fontcolor, notcolor)
+        size = base.get_width() + 2, base.get_height() + 2
+        img = pygame.Surface(size, 16)
         img.fill(notcolor)
         base.set_colorkey(0)
-        for a in range(-stroke, 3+stroke):
-            for b in range(-stroke, 3+stroke):
-                img.blit(base, (a, b))
+        img.blit(base, (0, 0))
+        img.blit(base, (2, 0))
+        img.blit(base, (0, 2))
+        img.blit(base, (2, 2))
         base.set_colorkey(0)
         base.set_palette_at(1, notcolor)
         img.blit(base, (1, 1))
         img.set_colorkey(notcolor)
         return img
 
-    def textOutline(self, font, message, fontcolor, outlinecolor, stroke):
-        base    = font.render(message, 0, fontcolor)
-        outline = self.textHollow(font, message, outlinecolor, stroke)
-        img     = pygame.Surface(outline.get_size(), 16)
+    def textOutline(self, font, message, fontcolor, outlinecolor):
+        if outlinecolor == (0,0,0):
+            outlinecolor = (0,0,1)
+        base = font.render(message, 0, fontcolor)
+        outline = self.textHollow(font, message, outlinecolor)
+        img = pygame.Surface(outline.get_size(), 16)
         img.blit(base, (1, 1))
         img.blit(outline, (0, 0))
         img.set_colorkey(0)
         return img
-    
 
 
 class Map():
@@ -622,6 +634,7 @@ class Player(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
+        
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = PLAYER_HIT_RECT
@@ -659,16 +672,6 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_SPACE]:
             if pygame.time.get_ticks() - self.last_slash >= SWORD_RATE:
                 Sword(self.game, self)
-            
-    def update_time_dependent(self):
-        self.current_time += self.dt
-        if self.current_time >= self.animation_time:
-            if self.moving == True or self.index != self.base_index:
-                self.current_time = 0
-                self.index = (self.index + 1) % len(self.images)
-            else:
-                self.index = self.base_index
-            self.image = self.images[self.index]
 
     def draw_health(self):
         for x in range(int(self.health)):
@@ -686,7 +689,10 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         self.get_keys()
-        self.update_time_dependent()
+        if self.moving == True or self.index != self.base_index:
+            update_time_dependent(self)
+        else:
+            self.current_time += self.dt
         
         self.image = pygame.transform.rotate(self.image, 0)
         self.rect = self.image.get_rect()
@@ -746,15 +752,7 @@ class Mob(pygame.sprite.Sprite):
             self.images = self.images_right
         if 45 <=  self.rot <= 135:
             self.images = self.images_top
-        
-    def update_time_dependent(self):
-        self.current_time += self.dt
-        if self.current_time >= self.animation_time:
-            self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos
+        self.image = pygame.transform.rotate(self.image, 0)
 
     def avoid_mobs(self):
         for mob in self.game.mobs:
@@ -768,7 +766,7 @@ class Mob(pygame.sprite.Sprite):
 
     def update(self):
         self.update_angle()
-        self.update_time_dependent()
+        update_time_dependent(self)
     
         target_dist = self.target.pos - self.pos
         if target_dist.length_squared() < DETECT_RADIUS**2:
@@ -786,7 +784,6 @@ class Mob(pygame.sprite.Sprite):
             collide_with_walls(self, self.game.walls, "y")
             self.rect.center = self.hit_rect.center
     
-        self.image = pygame.transform.rotate(self.image, 0)
         draw_health(self)
         if self.health <= 0:
             Item(self.game, self.pos, choice(ITEM_DROPS))
@@ -897,23 +894,12 @@ class Effect(pygame.sprite.Sprite):
         self.dt                 = game.dt
         self.current_time       = 0
         self.animation_time     = 0.10
-        
-    def update_time_dependent(self):
-        self.current_time += self.dt
-        if self.current_time >= self.animation_time:
-            self.current_time = 0
-            self.index = (self.index + 1) % len(self.images)
-            self.image = self.images[self.index]
-        self.rect = self.image.get_rect()
-        self.rect.center = self.pos
 
     def update(self):
-        self.update_time_dependent()
+        update_time_dependent(self)
         
         if (self.index + 1) % len(self.images) == 0:
             self.kill()
-
-
 
 g = Game()
 while True:
