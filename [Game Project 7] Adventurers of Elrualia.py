@@ -109,6 +109,25 @@ COLOR_INTERFACE = 140, 205, 245
 """
     Helpful Functions
 """
+def update_time_dependent(sprite):
+    sprite.current_time += sprite.dt
+    if sprite.current_time >= sprite.animation_time:
+        sprite.current_time = 0
+        sprite.index = (sprite.index + 1) % len(sprite.images)
+        sprite.image = sprite.images[sprite.index]
+    sprite.rect = sprite.image.get_rect()
+    sprite.rect.center = sprite.pos
+    sprite.image = pygame.transform.rotate(sprite.image, 0)
+
+def update_bobbing(sprite):
+    offset = BOB_RANGE * (sprite.tween(sprite.step / BOB_RANGE) - 0.5)
+    sprite.rect.centery = sprite.pos.y + offset * sprite.dir
+    sprite.step += BOB_SPEED
+    if sprite.step > BOB_RANGE:
+        sprite.step = 0
+        sprite.dir *= -1
+
+
 def draw_health(self):
     if 100*self.health/self.maxhealth > 60:
         color = GREEN
@@ -120,17 +139,6 @@ def draw_health(self):
         self.health = 0
     width = int(self.rect.width * self.health/self.maxhealth)
     pygame.draw.rect(self.image, color, pygame.Rect(0, 0, width, 7))
-
-
-
-def update_time_dependent(sprite):
-    sprite.current_time += sprite.dt
-    if sprite.current_time >= sprite.animation_time:
-        sprite.current_time = 0
-        sprite.index = (sprite.index + 1) % len(sprite.images)
-        sprite.image = sprite.images[sprite.index]
-    sprite.rect = sprite.image.get_rect()
-    sprite.rect.center = sprite.pos
 
 
 
@@ -610,17 +618,21 @@ class Camera():
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, game, x, y):
-        self._layer = LAYER_PLAYER
-        self.groups = game.all_sprites
+        # Setup
+        self.game               = game
+        self.groups             = self.game.all_sprites
+        self._layer             = LAYER_PLAYER
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
-        self.last_slash         = 0
-        self.moving             = False
-        
+
+        # Settings
         self.maxhealth          = PLAYER_HEALTH
         self.health             = self.maxhealth
         self.coin               = 0
-        
+
+        self.last_slash         = 0
+        self.moving             = False
+
+        # Surface
         self.rot                = 0
         self.pos                = vec(x, y)
         self.vel                = vec(0, 0)
@@ -644,10 +656,11 @@ class Player(pygame.sprite.Sprite):
         self.current_time       = 0
         self.animation_time     = 0.15
 
- 
     def get_keys(self):
-        self.vel = vec(0, 0)
         keys = pygame.key.get_pressed()
+
+        # Movement
+        self.vel = vec(0, 0)
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vel.x = -PLAYER_SPEED
             self.images = self.images_left
@@ -666,9 +679,9 @@ class Player(pygame.sprite.Sprite):
             self.rot = -90
         if self.vel.x != 0 and self.vel.y != 0:
             self.vel *= 0.7071
-        
         self.moving = (self.vel.x != 0 or self.vel.y != 0)
 
+        # Weapon
         if keys[pygame.K_SPACE]:
             if pygame.time.get_ticks() - self.last_slash >= SWORD_RATE:
                 Sword(self.game, self)
@@ -694,11 +707,9 @@ class Player(pygame.sprite.Sprite):
         else:
             self.current_time += self.dt
         
-        self.image = pygame.transform.rotate(self.image, 0)
+        self.pos += self.vel * self.game.dt
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
-        
-        self.pos += self.vel * self.game.dt
         
         self.hit_rect.centerx = self.pos.x
         collide_with_walls(self, self.game.walls, "x")
@@ -713,14 +724,18 @@ class Player(pygame.sprite.Sprite):
 
 class Mob(pygame.sprite.Sprite):
     def __init__(self, game, x ,y):
-        self._layer = LAYER_MOB
-        self.groups = game.all_sprites, game.mobs
+        # Setup
+        self.game               = game
+        self.groups             = self.game.all_sprites, self.game.mobs
+        self._layer             = LAYER_MOB
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
+
+        # Settings
         self.maxhealth          = MOB_HEALTH
         self.health             = self.maxhealth
         self.target             = game.player
     
+        # Surface
         self.rot = 0
         self.pos = vec(x, y)
         self.vel = vec(0, 0)
@@ -734,6 +749,7 @@ class Mob(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
+    
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = MOB_HIT_RECT.copy()
@@ -752,7 +768,6 @@ class Mob(pygame.sprite.Sprite):
             self.images = self.images_right
         if 45 <=  self.rot <= 135:
             self.images = self.images_top
-        self.image = pygame.transform.rotate(self.image, 0)
 
     def avoid_mobs(self):
         for mob in self.game.mobs:
@@ -769,7 +784,7 @@ class Mob(pygame.sprite.Sprite):
         update_time_dependent(self)
     
         target_dist = self.target.pos - self.pos
-        if target_dist.length_squared() < DETECT_RADIUS**2:
+        if target_dist.length_squared() <= DETECT_RADIUS**2:
             self.rot = target_dist.angle_to(vec(1, 0))
             self.acc = vec(1, 0).rotate(-self.rot)
             self.avoid_mobs()
@@ -792,12 +807,20 @@ class Mob(pygame.sprite.Sprite):
 
 class Sword(pygame.sprite.Sprite):
     def __init__(self, game, character):
-        self._layer = LAYER_SWORD
-        self.groups = game.all_sprites, game.sword
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        # Setup
         self.game               = game
-        self.character          = character
+        self.groups             = self.game.all_sprites, self.game.sword
+        self._layer             = LAYER_SWORD
+        pygame.sprite.Sprite.__init__(self, self.groups)
 
+        # Settings
+        self.character              = character
+        self.hit                    = False
+        self.spawn_time             = pygame.time.get_ticks()    
+        self.character.last_slash   = self.spawn_time
+        choice(self.game.sounds_voice["player_attack"]).play()
+
+        # Surface
         self.rot                = self.character.rot
         self.pos                = vec(self.character.pos + SWORD_OFFSET.rotate(-self.rot))
         self.vel                = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
@@ -808,11 +831,6 @@ class Sword(pygame.sprite.Sprite):
         self.rect.center        = self.pos
         self.hit_rect           = SWORD_HIT_RECT
         self.hit_rect.center    = self.rect.center
-
-        self.hit                    = False
-        self.spawn_time             = pygame.time.get_ticks()    
-        self.character.last_slash   = self.spawn_time
-        choice(self.game.sounds_voice["player_attack"]).play()
 
     def update(self):
         self.pos += self.vel * self.game.dt + self.character.vel * self.character.dt
@@ -826,10 +844,13 @@ class Sword(pygame.sprite.Sprite):
 
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, game, x, y, w, h):
+        # Settings
+        self.game   = game
+        self.groups = self.game.walls
         self._layer = LAYER_WALL
-        self.groups = game.walls
         pygame.sprite.Sprite.__init__(self, self.groups)
-        self.game = game
+
+        # Surface
         self.rect = pygame.Rect(x, y, w, h)
         self.hit_rect = self.rect
         self.x = x
@@ -841,11 +862,16 @@ class Obstacle(pygame.sprite.Sprite):
 
 class Item(pygame.sprite.Sprite):
     def __init__(self, game, pos, type):
-        self._layer = LAYER_ITEMS
-        self.groups = game.all_sprites, game.items
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        # Setup
         self.game               = game
+        self.groups             = self.game.all_sprites, self.game.items
+        self._layer             = LAYER_ITEMS
+        pygame.sprite.Sprite.__init__(self, self.groups)
+
+        # Settings
         self.type               = type
+
+        # Surface
         self.pos                = pos
         
         self.image              = self.game.item_images[self.type][0]
@@ -859,27 +885,24 @@ class Item(pygame.sprite.Sprite):
         self.step = 0
         self.dir = 1
 
-    def update_bobbing(self):
-        offset = BOB_RANGE * (self.tween(self.step / BOB_RANGE) - 0.5)
-        self.rect.centery = self.pos.y + offset * self.dir
-        self.step += BOB_SPEED
-        if self.step > BOB_RANGE:
-            self.step = 0
-            self.dir *= -1
-
     def update(self):
-        self.update_bobbing()
+        update_bobbing(self)
 
 
 
 
 class Effect(pygame.sprite.Sprite):
     def __init__(self, game, pos, type):
-        self._layer = LAYER_EFFECTS
-        self.groups = game.all_sprites, game.effects
-        pygame.sprite.Sprite.__init__(self, self.groups)
+        # Setup
         self.game               = game
+        self.groups             = self.game.all_sprites, self.game.effects
+        self._layer             = LAYER_EFFECTS
+        pygame.sprite.Sprite.__init__(self, self.groups)
+
+        # Settings
         self.type               = type
+
+        # Surface
         self.pos                = pos
         
         self.index              = 0
@@ -897,7 +920,7 @@ class Effect(pygame.sprite.Sprite):
 
     def update(self):
         update_time_dependent(self)
-        
+    
         if (self.index + 1) % len(self.images) == 0:
             self.kill()
 
