@@ -228,6 +228,30 @@ class Game:
         self.load_data()
         self.new()
 
+    def draw_text(self, text, font_name, size, color, x, y, align="nw"):
+        font = pygame.font.Font(font_name, size)
+        text_surface = font.render(text, True, color)
+        text_rect = text_surface.get_rect()
+        if align == "nw":
+            text_rect.topleft = (x, y)
+        if align == "ne":
+            text_rect.topright = (x, y)
+        if align == "sw":
+            text_rect.bottomleft = (x, y)
+        if align == "se":
+            text_rect.bottomright = (x, y)
+        if align == "n":
+            text_rect.midtop = (x, y)
+        if align == "s":
+            text_rect.midbottom = (x, y)
+        if align == "e":
+            text_rect.midright = (x, y)
+        if align == "w":
+            text_rect.midleft = (x, y)
+        if align == "center":
+            text_rect.center = (x, y)
+        self.gameDisplay.blit(text_surface, text_rect)
+
     def load_data(self):
         game_folder         = path.dirname(__file__)
         data_folder         = path.join(game_folder, "data")
@@ -236,7 +260,11 @@ class Game:
         sfx_folder          = path.join(data_folder, "sfx")
         voice_folder        = path.join(data_folder, "voice")
         music_folder        = path.join(data_folder, "music")
-                
+
+        self.font           = None
+        self.dim_screen     = pygame.Surface(self.gameDisplay.get_size()).convert_alpha()
+        self.dim_screen.fill((100, 100, 100, 120))
+
         self.map            = Map(path.join(map_folder, "Map_1.tmx"))
         self.map_img        = self.map.make_map()
         self.map_rect       = self.map_img.get_rect()
@@ -278,6 +306,7 @@ class Game:
 
 
     def new(self):
+        self.paused         = False
         self.draw_debug     = False
         self.camera         = Camera(self.map.width, self.map.height)
         self.all_sprites    = pygame.sprite.LayeredUpdates()
@@ -310,7 +339,8 @@ class Game:
         while self.playing:
             self.dt = self.clock.tick(FPS) / 1000
             self.events()
-            self.update()
+            if not self.paused:
+                self.update()
             self.draw()
             
 
@@ -329,6 +359,8 @@ class Game:
                     self.quit_game()
                 if event.key == pygame.K_h:
                     self.draw_debug = not self.draw_debug
+                if event.key == pygame.K_p:
+                    self.paused = not self.paused
 
 
     def update(self):
@@ -370,6 +402,8 @@ class Game:
     
     def draw(self):
         self.gameDisplay.blit(self.map_img, self.camera.apply_rect(self.map_rect))
+        self.player.draw_health()
+        self.player.draw_coin()
         for sprite in self.all_sprites:
             self.gameDisplay.blit(sprite.image, self.camera.apply(sprite))
             if self.draw_debug:
@@ -377,8 +411,9 @@ class Game:
         if self.draw_debug:
             for wall in self.walls:
                 pygame.draw.rect(self.gameDisplay, CYAN, self.camera.apply_rect(wall.rect), 1)
-        self.player.draw_health()
-        self.player.draw_coin()
+        if self.paused:
+            self.gameDisplay.blit(self.dim_screen, (0, 0))
+            self.draw_text("Paused", self.font, 105, RED, WIDTH/2, HEIGHT/2, align="center")
         self.gameDisplay.update()
 
 
