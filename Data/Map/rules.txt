@@ -1,2 +1,0 @@
-Rule_1.tmx
-Rule_collision.tmx
