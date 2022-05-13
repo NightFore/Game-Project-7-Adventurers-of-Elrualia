@@ -77,7 +77,7 @@ BG_MUSIC            = "music_aaron_krogh_310_world_map.mp3"
 SOUNDS_PICK_UP      = "sfx_maoudamashii_system23.wav"
 SOUNDS_SWORD_ATTACK = ["Battle_Slash_battle01.wav", "Battle_Slash_battle03.wav", "Battle_Slash_battle17.wav"]
 
-VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"] 
+VOICE_PLAYER_ATTACK = ["voice_wingless_seraph_jakigan_07_attack.wav", "voice_wingless_seraph_jakigan_08_attack.wav"]
 VOICE_PLAYER_DAMAGE = ["voice_wingless_seraph_jakigan_14_damage.wav", "voice_wingless_seraph_jakigan_15_damage.wav", "voice_wingless_seraph_jakigan_16_damage.wav"]
 
 """
@@ -197,7 +197,7 @@ def collide_with_walls(sprite, group, dir):
                 sprite.pos.x = hits[0].rect.right + sprite.hit_rect.width / 2
             sprite.vel.x = 0
             sprite.hit_rect.centerx = sprite.pos.x
-        
+
     if dir == "y":
         hits = pygame.sprite.spritecollide(sprite, group, False, collide_hit_rect)
         if hits:
@@ -268,7 +268,7 @@ class Game:
         self.map            = Map(path.join(map_folder, "Map_1.tmx"))
         self.map_img        = self.map.make_map()
         self.map_rect       = self.map_img.get_rect()
-        
+
         self.player_img     = load_tile_table(path.join(graphics_folder, PLAYER_IMG), 32, 32)
         self.image_heart    = pygame.image.load(path.join(graphics_folder, IMAGE_HEART)).convert_alpha()
         self.image_coin     = pygame.image.load(path.join(graphics_folder, IMAGE_COIN)).convert_alpha()
@@ -342,7 +342,7 @@ class Game:
             if not self.paused:
                 self.update()
             self.draw()
-            
+
 
     def quit_game(self):
         pygame.quit()
@@ -353,7 +353,7 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.quit_game()
-            
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.quit_game()
@@ -399,7 +399,7 @@ class Game:
                     mobs.pos += vec(SWORD_KNOCKBACK, 0).rotate(-sword.rot)
                     mobs.vel = vec(0, 0)
 
-    
+
     def draw(self):
         self.gameDisplay.blit(self.map_img, self.camera.apply_rect(self.map_rect))
         self.player.draw_health()
@@ -450,7 +450,7 @@ class ScaledGame(pygame.Surface):
         else:
             first_screen = (self.screen_info.current_w, self.screen_info.current_h - 120) # Take 120 pixels from the height because of the menu bar, window bar and dock takes space
             self.screen  = pygame.display.set_mode(first_screen, RESIZABLE)
-        
+
         # Sets up the Surface for the game.
         pygame.Surface.__init__(self, self.game_size)
 
@@ -458,8 +458,8 @@ class ScaledGame(pygame.Surface):
         self.FPS = FPS
         self.clock = pygame.time.Clock()
 
- 
-    def get_resolution(self, ss, gs): 
+
+    def get_resolution(self, ss, gs):
         gap = float(gs[0]) / float(gs[1]) # Game aspect ratio
         sap = float(ss[0]) / float(ss[1]) # Scaled aspect ratio
         if gap > sap:
@@ -519,8 +519,8 @@ class ScaledGame(pygame.Surface):
             else:
                 self.game_scaled = self.get_resolution(ss, self.game_size)
                 self.game_scaled = int(self.game_scaled[0]), int(self.game_scaled[1])
-                
-            # Scale game to screen resolution, keeping aspect ratio 
+
+            # Scale game to screen resolution, keeping aspect ratio
             self.screen = pygame.display.set_mode(self.game_scaled, RESIZABLE)
             self.resize = False
 
@@ -529,9 +529,9 @@ class ScaledGame(pygame.Surface):
             self.factor_h = self.game_scaled[1] / self.get_height()
             self.ss = ss
 
-        # Add game to screen with the scaled size and gap required.      
+        # Add game to screen with the scaled size and gap required.
         self.screen.blit(pygame.transform.scale(self, self.game_scaled), self.game_gap)
-        
+
         pygame.display.flip()
         self.clock.tick(self.FPS)
 
@@ -555,11 +555,11 @@ class Text():
         self.x      = pos[1]
         self.y      = pos[2]
         self.textSurface = self.font.render(self.text, True, self.color)
-    
+
         # Center
         if self.center == False:
             self.textRect        = (self.x, self.y)
-            
+
         elif self.center == True:
             self.textRect        = self.textSurface.get_rect()
             self.textRect.center = (self.x, self.y)
@@ -573,7 +573,7 @@ class Text():
 
         elif hollow == True:
             self.textSurface = self.textHollow(self.font, self.text, self.color)
-        
+
         self.display.blit(self.textSurface, self.textRect)
 
     def textHollow(self, font, message, fontcolor):
@@ -648,7 +648,7 @@ class Camera():
         y = min(0, y)                           # Top
         y = max(-(self.height-HEIGHT), y)       # Bottom
         self.camera = pygame.Rect(x, y, self.width, self.height)
-    
+
 
 
 class Player(pygame.sprite.Sprite):
@@ -681,12 +681,12 @@ class Player(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
-        
+
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = PLAYER_HIT_RECT
         self.hit_rect.center    = self.rect.center
-    
+
         self.dt                 = game.dt
         self.current_time       = 0
         self.animation_time     = 0.15
@@ -728,7 +728,7 @@ class Player(pygame.sprite.Sprite):
     def draw_coin(self):
         self.game.gameDisplay.blit(self.game.image_coin, (10, 40))
         Text((self.game.gameDisplay, self.coin, text_interface), (False, 52, 46))
-        
+
     def add_health(self, amount):
         if self.health < PLAYER_HEALTH:
             self.health += amount
@@ -741,11 +741,11 @@ class Player(pygame.sprite.Sprite):
             update_time_dependent(self)
         else:
             self.current_time += self.dt
-        
+
         self.pos += self.vel * self.game.dt
         self.rect = self.image.get_rect()
         self.rect.center = self.pos
-        
+
         self.hit_rect.centerx = self.pos.x
         collide_with_walls(self, self.game.walls, "x")
         self.hit_rect.centery = self.pos.y
@@ -769,13 +769,13 @@ class Mob(pygame.sprite.Sprite):
         self.maxhealth          = MOB_HEALTH
         self.health             = self.maxhealth
         self.target             = game.player
-    
+
         # Surface
         self.rot = 0
         self.pos = vec(x, y)
         self.vel = vec(0, 0)
         self.acc = vec(0, 0)
-        
+
         self.index              = 0
         self.images             = self.game.mob_img.copy()
         self.images_bottom      = self.images[0]
@@ -784,12 +784,12 @@ class Mob(pygame.sprite.Sprite):
         self.images_top         = self.images[3]
         self.images             = self.images_bottom
         self.image              = self.images_bottom[self.index]
-    
+
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = MOB_HIT_RECT.copy()
         self.hit_rect.center    = self.rect.center
-    
+
         self.dt                 = game.dt
         self.current_time       = 0
         self.animation_time     = 0.15
@@ -817,7 +817,7 @@ class Mob(pygame.sprite.Sprite):
     def update(self):
         self.update_angle()
         update_time_dependent(self)
-    
+
         target_dist = self.target.pos - self.pos
         if target_dist.length_squared() <= DETECT_RADIUS**2:
             self.rot = target_dist.angle_to(vec(1, 0))
@@ -833,7 +833,7 @@ class Mob(pygame.sprite.Sprite):
             self.hit_rect.centery = self.pos.y
             collide_with_walls(self, self.game.walls, "y")
             self.rect.center = self.hit_rect.center
-    
+
         draw_health(self)
         if self.health <= 0:
             Item(self.game, self.pos, choice(ITEM_DROPS))
@@ -851,7 +851,7 @@ class Sword(pygame.sprite.Sprite):
         # Settings
         self.character              = character
         self.hit                    = False
-        self.spawn_time             = pygame.time.get_ticks()    
+        self.spawn_time             = pygame.time.get_ticks()
         self.character.last_slash   = self.spawn_time
         choice(self.game.sounds_voice["player_attack"]).play()
 
@@ -859,7 +859,7 @@ class Sword(pygame.sprite.Sprite):
         self.rot                = self.character.rot
         self.pos                = vec(self.character.pos + SWORD_OFFSET.rotate(-self.rot))
         self.vel                = vec(1, 0).rotate(-self.rot) * SWORD_SPEED
-        
+
         self.image              = pygame.transform.rotate(self.game.sword_img, self.rot-90)
 
         self.rect               = self.image.get_rect()
@@ -908,9 +908,9 @@ class Item(pygame.sprite.Sprite):
 
         # Surface
         self.pos                = pos
-        
+
         self.image              = self.game.item_images[self.type][0]
-    
+
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = self.image.get_rect()
@@ -939,23 +939,23 @@ class Effect(pygame.sprite.Sprite):
 
         # Surface
         self.pos                = pos
-        
+
         self.index              = 0
         self.images             = self.game.effect_images[self.type]
         self.image              = self.images[self.index]
-    
+
         self.rect               = self.image.get_rect()
         self.rect.center        = self.pos
         self.hit_rect           = self.image.get_rect()
         self.hit_rect.center    = self.rect.center
-    
+
         self.dt                 = game.dt
         self.current_time       = 0
         self.animation_time     = 0.10
 
     def update(self):
         update_time_dependent(self)
-    
+
         if (self.index + 1) % len(self.images) == 0:
             self.kill()
 
